@@ -5,8 +5,6 @@ import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 
 export async function signUp(formData: FormData) {
-  const supabase = await createClient()
-  
   const email = formData.get('email') as string
   const password = formData.get('password') as string
   const firstName = formData.get('firstName') as string
@@ -14,41 +12,61 @@ export async function signUp(formData: FormData) {
   const nickname = formData.get('nickname') as string
   const bio = formData.get('bio') as string
   
-  const { error } = await supabase.auth.signUp({
-    email,
-    password,
-    options: {
-      emailRedirectTo: process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL || 
-        `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/callback`,
-      data: {
-        first_name: firstName,
-        last_name: lastName,
-        nickname: nickname,
-        bio: bio || null,
-      },
-    },
-  })
+  if (!email || !password || !firstName || !lastName || !nickname) {
+    return { error: 'All required fields must be filled' }
+  }
   
-  if (error) {
-    return { error: error.message }
+  try {
+    const supabase = await createClient()
+    
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        emailRedirectTo: process.env.NEXT_PUBLIC_DEV_SUPABASE_REDIRECT_URL || 
+          `${process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000'}/auth/callback`,
+        data: {
+          first_name: firstName,
+          last_name: lastName,
+          nickname: nickname,
+          bio: bio || null,
+        },
+      },
+    })
+    
+    if (error) {
+      return { error: error.message }
+    }
+  } catch (err) {
+    console.error('Sign up error:', err)
+    return { error: 'Unable to connect to authentication service. Please try again.' }
   }
   
   redirect('/auth/sign-up-success')
 }
 
 export async function signIn(formData: FormData) {
-  const supabase = await createClient()
-  
   const email = formData.get('email') as string
   const password = formData.get('password') as string
   
-  const { error } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  })
+  if (!email || !password) {
+    return { error: 'Email and password are required' }
+  }
   
-  if (error) {
-    return { error: error.message }
+  try {
+    const supabase = await createClient()
+    
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    })
+    
+    if (error) {
+      return { error: error.message }
+    }
+  } catch (err) {
+    console.error('Sign in error:', err)
+    return { error: 'Unable to connect to authentication service. Please try again.' }
   }
   
   revalidatePath('/', 'layout')
