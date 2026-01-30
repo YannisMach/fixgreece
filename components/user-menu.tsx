@@ -10,7 +10,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Button } from '@/components/ui/button'
-import { User, Settings, Shield, LogOut, ChevronDown } from 'lucide-react'
+import { User, Settings, Shield, LogOut, ChevronDown, Bookmark, Mail } from 'lucide-react'
 import Link from 'next/link'
 
 interface UserMenuProps {
@@ -49,6 +49,18 @@ export function UserMenu({ profile }: UserMenuProps) {
           <Link href="/profile" className="flex cursor-pointer items-center gap-2">
             <User className="h-4 w-4" />
             Profile
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href="/saves" className="flex cursor-pointer items-center gap-2">
+            <Bookmark className="h-4 w-4" />
+            Saved Items
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href="/invites" className="flex cursor-pointer items-center gap-2">
+            <Mail className="h-4 w-4" />
+            Invitations
           </Link>
         </DropdownMenuItem>
         <DropdownMenuItem asChild>

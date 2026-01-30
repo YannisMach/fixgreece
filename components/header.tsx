@@ -50,6 +50,11 @@ export async function Header() {
                   Explore
                 </Button>
               </Link>
+              <Link href="/saves">
+                <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
+                  Saved
+                </Button>
+              </Link>
             </nav>
           )}
         </div>

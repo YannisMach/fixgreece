@@ -14,6 +14,7 @@ export async function createMindMap(formData: FormData) {
   const title = formData.get('title') as string
   const description = formData.get('description') as string
   const isPublic = formData.get('isPublic') === 'true'
+  const categoryId = formData.get('categoryId') as string | null
   
   const { data, error } = await supabase
     .from('mind_maps')
@@ -22,6 +23,7 @@ export async function createMindMap(formData: FormData) {
       title,
       description: description || null,
       is_public: isPublic,
+      category_id: categoryId || null,
     })
     .select()
     .single()
