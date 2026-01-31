@@ -1,7 +1,13 @@
 import Link from 'next/link'
-import { MindMap, Profile, formatDisplayName } from '@/lib/types'
+import { MindMap, Profile, formatDisplayName, ContentStatus } from '@/lib/types'
 import { formatDistanceToNow } from 'date-fns'
-import { Globe, Lock } from 'lucide-react'
+import { Globe, Lock, FileEdit } from 'lucide-react'
+
+const statusConfig: Record<ContentStatus, { icon: typeof Globe; label: string; className: string }> = {
+  draft: { icon: FileEdit, label: 'Draft', className: 'text-amber-600' },
+  public: { icon: Globe, label: 'Public', className: 'text-green-600' },
+  private: { icon: Lock, label: 'Private', className: 'text-muted-foreground' },
+}
 
 interface MindMapCardProps {
   mindMap: MindMap & { profiles: Profile }
@@ -52,14 +58,17 @@ export function MindMapCard({ mindMap, isOwner }: MindMapCardProps) {
                 {mindMap.title}
               </h3>
               <div className="mt-1.5 flex items-center gap-3 text-xs text-muted-foreground">
-                <span className="flex items-center gap-1">
-                  {mindMap.is_public ? (
-                    <Globe className="h-3 w-3" />
-                  ) : (
-                    <Lock className="h-3 w-3" />
-                  )}
-                  {mindMap.is_public ? 'Public' : 'Private'}
-                </span>
+                {(() => {
+                  const status = mindMap.status || (mindMap.is_public ? 'public' : 'private')
+                  const config = statusConfig[status as ContentStatus]
+                  const StatusIcon = config.icon
+                  return (
+                    <span className={`flex items-center gap-1 ${config.className}`}>
+                      <StatusIcon className="h-3 w-3" />
+                      {config.label}
+                    </span>
+                  )
+                })()}
                 <span>
                   {formatDistanceToNow(new Date(mindMap.updated_at), { addSuffix: true })}
                 </span>

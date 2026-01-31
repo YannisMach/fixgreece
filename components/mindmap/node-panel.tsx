@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useTransition } from 'react'
-import { Node as NodeType, Comment, formatDisplayName } from '@/lib/types'
+import { Node as NodeType, Comment, formatDisplayName, ContentStatus } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -15,9 +15,18 @@ import {
   Flag, 
   Plus, 
   Trash2,
-  Send 
+  Send,
+  Globe,
+  Lock,
+  FileEdit
 } from 'lucide-react'
-import { vote, getComments, createComment, updateNode, deleteNode, createReport } from '@/lib/actions/mindmap'
+import { vote, getComments, createComment, updateNode, deleteNode, createReport, updateNodeStatus } from '@/lib/actions/mindmap'
+
+const statusConfig: Record<ContentStatus, { icon: typeof Globe; label: string; className: string }> = {
+  draft: { icon: FileEdit, label: 'Draft', className: 'text-amber-600 border-amber-500' },
+  public: { icon: Globe, label: 'Public', className: 'text-green-600 border-green-500' },
+  private: { icon: Lock, label: 'Private', className: 'text-muted-foreground border-muted-foreground' },
+}
 import { cn } from '@/lib/utils'
 
 interface NodePanelProps {
@@ -40,6 +49,7 @@ export function NodePanel({
   onClose 
 }: NodePanelProps) {
   const [content, setContent] = useState(node.content)
+  const [nodeStatus, setNodeStatus] = useState<ContentStatus>((node.status || 'public') as ContentStatus)
   const [comments, setComments] = useState<Comment[]>([])
   const [newComment, setNewComment] = useState('')
   const [reportReason, setReportReason] = useState('')
@@ -47,7 +57,8 @@ export function NodePanel({
   const [isPending, startTransition] = useTransition()
   
   const isRoot = !node.parent_id
-  const canDelete = canEdit && !isRoot && node.created_by === currentUserId
+  const canDelete = canEdit && !isRoot && node.user_id === currentUserId
+  const isNodeOwner = node.user_id === currentUserId
   
   useEffect(() => {
     setContent(node.content)
@@ -140,6 +151,18 @@ export function NodePanel({
     })
   }
   
+  function handleStatusChange(newStatus: ContentStatus) {
+    if (newStatus === nodeStatus || !isNodeOwner) return
+    
+    startTransition(async () => {
+      const result = await updateNodeStatus(node.id, newStatus)
+      if (result.success) {
+        setNodeStatus(newStatus)
+        onUpdate({ ...node, status: newStatus })
+      }
+    })
+  }
+  
   return (
     <Card className="absolute right-4 top-4 z-20 w-80 shadow-xl">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -167,6 +190,37 @@ export function NodePanel({
             <p className="font-medium">{node.content}</p>
           )}
         </div>
+        
+        {/* Status Selector for node owner */}
+        {isNodeOwner && (
+          <div className="space-y-2">
+            <p className="text-xs font-medium text-muted-foreground">Branch Status</p>
+            <div className="flex gap-1">
+              {(Object.keys(statusConfig) as ContentStatus[]).map((s) => {
+                const cfg = statusConfig[s]
+                const Icon = cfg.icon
+                const isActive = nodeStatus === s
+                return (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => handleStatusChange(s)}
+                    disabled={isPending}
+                    className={cn(
+                      'flex flex-1 items-center justify-center gap-1 rounded-md border px-2 py-1.5 text-xs transition-all',
+                      isActive 
+                        ? `${cfg.className} border-current bg-current/5` 
+                        : 'border-border text-muted-foreground hover:border-muted-foreground/50'
+                    )}
+                  >
+                    <Icon className="h-3 w-3" />
+                    {cfg.label}
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
         
         {/* Voting */}
         <div className="flex items-center justify-between rounded-lg border border-border p-2">

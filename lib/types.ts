@@ -1,6 +1,9 @@
 // User roles
 export type UserRole = 'admin' | 'moderator' | 'user'
 
+// Status for mind maps and nodes
+export type ContentStatus = 'draft' | 'public' | 'private'
+
 export type DisplayNameField = 'first_name' | 'last_name' | 'nickname'
 
 export interface Profile {
@@ -26,6 +29,7 @@ export interface MindMap {
   title: string
   description: string | null
   is_public: boolean
+  status: ContentStatus
   category_id: string | null
   created_at: string
   updated_at: string
@@ -47,6 +51,7 @@ export interface Node {
   position_x: number
   position_y: number
   color: string | null
+  status: ContentStatus
   user_id: string
   created_at: string
   updated_at: string

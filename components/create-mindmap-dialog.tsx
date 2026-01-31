@@ -1,8 +1,5 @@
 'use client'
 
-import { Switch } from "@/components/ui/switch"
-import { Globe, Lock } from 'lucide-react' // Import Globe and Lock icons
-
 import React from "react"
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
@@ -28,8 +25,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
-import { Plus, X, Tag } from 'lucide-react'
-import type { Category, Tag as TagType } from '@/lib/types'
+import { Plus, X, Tag, Globe, Lock, FileEdit } from 'lucide-react'
+import type { Category, Tag as TagType, ContentStatus } from '@/lib/types'
 
 interface CreateMindMapDialogProps {
   trigger?: React.ReactNode
@@ -43,8 +40,8 @@ export function CreateMindMapDialog({ trigger }: CreateMindMapDialogProps) {
   const [tagInput, setTagInput] = useState('')
   const [tags, setTags] = useState<string[]>([])
   const [tagSuggestions, setTagSuggestions] = useState<TagType[]>([])
+  const [status, setStatus] = useState<ContentStatus>('public')
   const router = useRouter()
-  const [isPublic, setIsPublic] = useState(false) // Declare isPublic state
   
   useEffect(() => {
     if (open) {
@@ -75,8 +72,7 @@ export function CreateMindMapDialog({ trigger }: CreateMindMapDialogProps) {
   
   async function handleSubmit(formData: FormData) {
     setLoading(true)
-    // All subjects are public by default
-    formData.set('isPublic', 'true')
+    formData.set('status', status)
     if (selectedCategory) {
       formData.set('categoryId', selectedCategory)
     }
@@ -218,6 +214,53 @@ export function CreateMindMapDialog({ trigger }: CreateMindMapDialogProps) {
             )}
           </div>
           
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">Status</Label>
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() => setStatus('draft')}
+                className={`flex flex-col items-center gap-1.5 rounded-lg border p-3 transition-all ${
+                  status === 'draft' 
+                    ? 'border-primary bg-primary/5 text-primary' 
+                    : 'border-border hover:border-muted-foreground/50'
+                }`}
+              >
+                <FileEdit className="h-5 w-5" />
+                <span className="text-xs font-medium">Draft</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatus('public')}
+                className={`flex flex-col items-center gap-1.5 rounded-lg border p-3 transition-all ${
+                  status === 'public' 
+                    ? 'border-green-500 bg-green-500/5 text-green-600' 
+                    : 'border-border hover:border-muted-foreground/50'
+                }`}
+              >
+                <Globe className="h-5 w-5" />
+                <span className="text-xs font-medium">Public</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatus('private')}
+                className={`flex flex-col items-center gap-1.5 rounded-lg border p-3 transition-all ${
+                  status === 'private' 
+                    ? 'border-amber-500 bg-amber-500/5 text-amber-600' 
+                    : 'border-border hover:border-muted-foreground/50'
+                }`}
+              >
+                <Lock className="h-5 w-5" />
+                <span className="text-xs font-medium">Private</span>
+              </button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {status === 'draft' && 'Only you can see this. Finish it before sharing.'}
+              {status === 'public' && 'Anyone can view and contribute to this map.'}
+              {status === 'private' && 'Only you and invited collaborators can access.'}
+            </p>
+          </div>
+
           <div className="flex gap-3 pt-2">
             <Button 
               type="button" 

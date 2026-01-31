@@ -14,6 +14,7 @@ export async function createMindMap(formData: FormData) {
   const title = formData.get('title') as string
   const description = formData.get('description') as string
   const categoryId = formData.get('categoryId') as string | null
+  const status = (formData.get('status') as string) || 'public'
   
   const { data, error } = await supabase
     .from('mind_maps')
@@ -21,7 +22,8 @@ export async function createMindMap(formData: FormData) {
       user_id: user.id,
       title,
       description: description || null,
-      is_public: true, // All subjects are public
+      is_public: status === 'public',
+      status: status,
       category_id: categoryId || null,
     })
     .select()
@@ -42,6 +44,7 @@ export async function createMindMap(formData: FormData) {
       position_y: 300,
       color: '#4F46E5',
       user_id: user.id,
+      status: status,
     })
   
   if (nodeError) {
@@ -58,9 +61,11 @@ export async function getMindMaps() {
   
   if (!user) return []
   
+  // Get public maps and user's own maps (including drafts and private)
   const { data } = await supabase
     .from('mind_maps')
     .select('*, profiles(id, first_name, last_name, nickname, display_name_format)')
+    .or(`status.eq.public,user_id.eq.${user.id}`)
     .order('updated_at', { ascending: false })
   
   return data || []
@@ -135,6 +140,7 @@ export async function createNode(formData: FormData) {
   const positionX = parseFloat(formData.get('positionX') as string)
   const positionY = parseFloat(formData.get('positionY') as string)
   const color = formData.get('color') as string || null
+  const status = (formData.get('status') as string) || 'public'
   
   const { data, error } = await supabase
     .from('nodes')
@@ -146,6 +152,7 @@ export async function createNode(formData: FormData) {
       position_y: positionY,
       color,
       user_id: user.id,
+      status: status,
     })
     .select()
     .single()
@@ -177,6 +184,7 @@ export async function updateNode(formData: FormData) {
   const positionX = formData.get('positionX') ? parseFloat(formData.get('positionX') as string) : undefined
   const positionY = formData.get('positionY') ? parseFloat(formData.get('positionY') as string) : undefined
   const color = formData.get('color') as string | null
+  const status = formData.get('status') as string | null
   
   const updates: Record<string, unknown> = {
     updated_at: new Date().toISOString(),
@@ -186,6 +194,7 @@ export async function updateNode(formData: FormData) {
   if (positionX !== undefined) updates.position_x = positionX
   if (positionY !== undefined) updates.position_y = positionY
   if (color !== undefined) updates.color = color
+  if (status) updates.status = status
   
   const { error } = await supabase
     .from('nodes')
@@ -298,6 +307,57 @@ export async function createComment(nodeId: string, content: string) {
   }
   
   return { success: true, comment: data }
+}
+
+export async function updateMindMapStatus(mindMapId: string, status: 'draft' | 'public' | 'private') {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  
+  if (!user) {
+    return { error: 'Not authenticated' }
+  }
+  
+  const { error } = await supabase
+    .from('mind_maps')
+    .update({ 
+      status: status,
+      is_public: status === 'public',
+      updated_at: new Date().toISOString() 
+    })
+    .eq('id', mindMapId)
+    .eq('user_id', user.id)
+  
+  if (error) {
+    return { error: error.message }
+  }
+  
+  revalidatePath(`/mindmap/${mindMapId}`)
+  revalidatePath('/dashboard')
+  return { success: true }
+}
+
+export async function updateNodeStatus(nodeId: string, status: 'draft' | 'public' | 'private') {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  
+  if (!user) {
+    return { error: 'Not authenticated' }
+  }
+  
+  const { error } = await supabase
+    .from('nodes')
+    .update({ 
+      status: status,
+      updated_at: new Date().toISOString() 
+    })
+    .eq('id', nodeId)
+    .eq('user_id', user.id)
+  
+  if (error) {
+    return { error: error.message }
+  }
+  
+  return { success: true }
 }
 
 export async function createReport(formData: FormData) {
