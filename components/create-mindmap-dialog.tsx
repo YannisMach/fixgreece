@@ -1,5 +1,8 @@
 'use client'
 
+import { Switch } from "@/components/ui/switch"
+import { Globe, Lock } from 'lucide-react' // Import Globe and Lock icons
+
 import React from "react"
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
@@ -17,7 +20,6 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Switch } from '@/components/ui/switch'
 import {
   Select,
   SelectContent,
@@ -26,7 +28,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
-import { Plus, Globe, Lock, X, Tag } from 'lucide-react'
+import { Plus, X, Tag } from 'lucide-react'
 import type { Category, Tag as TagType } from '@/lib/types'
 
 interface CreateMindMapDialogProps {
@@ -36,13 +38,13 @@ interface CreateMindMapDialogProps {
 export function CreateMindMapDialog({ trigger }: CreateMindMapDialogProps) {
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
-  const [isPublic, setIsPublic] = useState(true)
   const [categories, setCategories] = useState<Category[]>([])
   const [selectedCategory, setSelectedCategory] = useState<string>('')
   const [tagInput, setTagInput] = useState('')
   const [tags, setTags] = useState<string[]>([])
   const [tagSuggestions, setTagSuggestions] = useState<TagType[]>([])
   const router = useRouter()
+  const [isPublic, setIsPublic] = useState(false) // Declare isPublic state
   
   useEffect(() => {
     if (open) {
@@ -73,7 +75,8 @@ export function CreateMindMapDialog({ trigger }: CreateMindMapDialogProps) {
   
   async function handleSubmit(formData: FormData) {
     setLoading(true)
-    formData.set('isPublic', isPublic.toString())
+    // All subjects are public by default
+    formData.set('isPublic', 'true')
     if (selectedCategory) {
       formData.set('categoryId', selectedCategory)
     }
@@ -213,33 +216,6 @@ export function CreateMindMapDialog({ trigger }: CreateMindMapDialogProps) {
                 ))}
               </div>
             )}
-          </div>
-          
-          <div className="flex items-center justify-between rounded-xl border border-border bg-muted/30 p-4">
-            <div className="flex items-center gap-3">
-              {isPublic ? (
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-500/10 text-green-600">
-                  <Globe className="h-5 w-5" />
-                </div>
-              ) : (
-                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted text-muted-foreground">
-                  <Lock className="h-5 w-5" />
-                </div>
-              )}
-              <div>
-                <Label htmlFor="public" className="text-sm font-medium">
-                  {isPublic ? 'Public' : 'Private'}
-                </Label>
-                <p className="text-xs text-muted-foreground">
-                  {isPublic ? 'Anyone can view and contribute' : 'Only you can see this map'}
-                </p>
-              </div>
-            </div>
-            <Switch
-              id="public"
-              checked={isPublic}
-              onCheckedChange={setIsPublic}
-            />
           </div>
           
           <div className="flex gap-3 pt-2">

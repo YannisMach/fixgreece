@@ -13,7 +13,6 @@ export async function createMindMap(formData: FormData) {
   
   const title = formData.get('title') as string
   const description = formData.get('description') as string
-  const isPublic = formData.get('isPublic') === 'true'
   const categoryId = formData.get('categoryId') as string | null
   
   const { data, error } = await supabase
@@ -22,7 +21,7 @@ export async function createMindMap(formData: FormData) {
       user_id: user.id,
       title,
       description: description || null,
-      is_public: isPublic,
+      is_public: true, // All subjects are public
       category_id: categoryId || null,
     })
     .select()
@@ -62,7 +61,6 @@ export async function getMindMaps() {
   const { data } = await supabase
     .from('mind_maps')
     .select('*, profiles(id, first_name, last_name, nickname, display_name_format)')
-    .or(`user_id.eq.${user.id},is_public.eq.true`)
     .order('updated_at', { ascending: false })
   
   return data || []
