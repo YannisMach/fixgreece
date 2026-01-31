@@ -2,8 +2,9 @@ import React from "react"
 import { Header } from '@/components/header'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
-import { ArrowRight, Users, GitBranch, ThumbsUp, MessageSquare, Globe, Zap, Play, TrendingUp, Eye } from 'lucide-react'
+import { ArrowRight, Users, GitBranch, ThumbsUp, MessageSquare, Globe, Zap, Play, TrendingUp } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
+import { DemoCanvas } from '@/components/demo-canvas'
 
 async function getTopSubjects() {
   try {
@@ -157,106 +158,9 @@ export default async function HomePage() {
               </p>
             </div>
             
-            {/* Hero Visual - Mind Map Preview */}
+            {/* Interactive Demo - Try it without signing up */}
             <div id="demo" className="relative mx-auto mt-16 max-w-5xl scroll-mt-8">
-              <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-2xl shadow-primary/5">
-                <div className="flex items-center gap-2 border-b border-border bg-muted/30 px-4 py-3">
-                  <div className="flex gap-1.5">
-                    <div className="h-3 w-3 rounded-full bg-destructive/60" />
-                    <div className="h-3 w-3 rounded-full bg-accent/60" />
-                    <div className="h-3 w-3 rounded-full bg-success/60" />
-                  </div>
-                  <div className="ml-4 flex-1 rounded-lg bg-background px-3 py-1 text-xs text-muted-foreground">
-                    fixgreece.com/mindmap/sustainable-tourism
-                  </div>
-                </div>
-                <div className="relative h-[400px] bg-[#fafafa] p-4 lg:h-[500px]">
-                  {/* Canvas dots pattern */}
-                  <div 
-                    className="absolute inset-0"
-                    style={{
-                      backgroundImage: 'radial-gradient(circle, #e5e5e5 1px, transparent 1px)',
-                      backgroundSize: '24px 24px',
-                    }}
-                  />
-                  
-                  {/* Mock mind map nodes */}
-                  <svg className="absolute inset-0 h-full w-full" style={{ overflow: 'visible' }}>
-                    {/* Connection lines */}
-                    <line x1="50%" y1="50%" x2="25%" y2="30%" stroke="#e5e5e5" strokeWidth="2" />
-                    <line x1="50%" y1="50%" x2="75%" y2="30%" stroke="#e5e5e5" strokeWidth="2" />
-                    <line x1="50%" y1="50%" x2="25%" y2="70%" stroke="#e5e5e5" strokeWidth="2" />
-                    <line x1="50%" y1="50%" x2="75%" y2="70%" stroke="#e5e5e5" strokeWidth="2" />
-                    <line x1="25%" y1="30%" x2="12%" y2="20%" stroke="#e5e5e5" strokeWidth="2" />
-                    <line x1="75%" y1="30%" x2="88%" y2="20%" stroke="#e5e5e5" strokeWidth="2" />
-                  </svg>
-                  
-                  {/* Central node */}
-                  <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
-                    <div className="flex items-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-medium text-primary-foreground shadow-lg">
-                      Sustainable Tourism in Greece
-                    </div>
-                  </div>
-                  
-                  {/* Branch nodes */}
-                  <div className="absolute left-[25%] top-[30%] -translate-x-1/2 -translate-y-1/2">
-                    <div className="flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm shadow-md">
-                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-success/10 text-xs text-success">12</span>
-                      Eco-friendly hotels
-                    </div>
-                  </div>
-                  
-                  <div className="absolute left-[75%] top-[30%] -translate-x-1/2 -translate-y-1/2">
-                    <div className="flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm shadow-md">
-                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-success/10 text-xs text-success">8</span>
-                      Local experiences
-                    </div>
-                  </div>
-                  
-                  <div className="absolute left-[25%] top-[70%] -translate-x-1/2 -translate-y-1/2">
-                    <div className="flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm shadow-md">
-                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-success/10 text-xs text-success">15</span>
-                      Public transport
-                    </div>
-                  </div>
-                  
-                  <div className="absolute left-[75%] top-[70%] -translate-x-1/2 -translate-y-1/2">
-                    <div className="flex items-center gap-2 rounded-xl border border-border bg-card px-4 py-2.5 text-sm shadow-md">
-                      <span className="flex h-5 w-5 items-center justify-center rounded-full bg-destructive/10 text-xs text-destructive">-3</span>
-                      New airports
-                    </div>
-                  </div>
-                  
-                  {/* Tertiary nodes */}
-                  <div className="absolute left-[12%] top-[20%] -translate-x-1/2 -translate-y-1/2">
-                    <div className="rounded-lg border border-border bg-card px-3 py-2 text-xs shadow-sm">
-                      Solar panels
-                    </div>
-                  </div>
-                  
-                  <div className="absolute left-[88%] top-[20%] -translate-x-1/2 -translate-y-1/2">
-                    <div className="rounded-lg border border-border bg-card px-3 py-2 text-xs shadow-sm">
-                      Food tours
-                    </div>
-                  </div>
-                  
-                  {/* User avatars */}
-                  <div className="absolute bottom-4 right-4 flex -space-x-2">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-background bg-primary text-xs font-medium text-primary-foreground">
-                      MK
-                    </div>
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-background bg-accent text-xs font-medium text-accent-foreground">
-                      NP
-                    </div>
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-background bg-chart-2 text-xs font-medium text-white">
-                      AG
-                    </div>
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-background bg-muted text-xs font-medium text-muted-foreground">
-                      +47
-                    </div>
-                  </div>
-                </div>
-              </div>
+              <DemoCanvas />
             </div>
           </div>
         </section>
