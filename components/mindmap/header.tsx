@@ -5,14 +5,25 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { MindMap, Profile, formatDisplayName, ContentStatus } from '@/lib/types'
-import { ArrowLeft, Globe, Lock, FileEdit, ChevronDown } from 'lucide-react'
-import { updateMindMapStatus } from '@/lib/actions/mindmap'
+import { ArrowLeft, Globe, Lock, FileEdit, ChevronDown, Trash2, MoreHorizontal } from 'lucide-react'
+import { updateMindMapStatus, deleteMindMap, updateMindMapDescription } from '@/lib/actions/mindmap'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 interface MindMapHeaderProps {
   mindMap: MindMap & { profiles: Profile }
@@ -30,6 +41,8 @@ export function MindMapHeader({ mindMap, isOwner }: MindMapHeaderProps) {
   const currentStatus = (mindMap.status || (mindMap.is_public ? 'public' : 'private')) as ContentStatus
   const [status, setStatus] = useState<ContentStatus>(currentStatus)
   const [isUpdating, setIsUpdating] = useState(false)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
   const router = useRouter()
   
   const config = statusConfig[status]
@@ -45,6 +58,17 @@ export function MindMapHeader({ mindMap, isOwner }: MindMapHeaderProps) {
       router.refresh()
     }
     setIsUpdating(false)
+  }
+  
+  async function handleDelete() {
+    setIsDeleting(true)
+    const result = await deleteMindMap(mindMap.id)
+    if (result.success) {
+      router.push('/dashboard')
+    } else {
+      setIsDeleting(false)
+      setShowDeleteDialog(false)
+    }
   }
   
   return (
@@ -109,10 +133,51 @@ export function MindMapHeader({ mindMap, isOwner }: MindMapHeaderProps) {
       </div>
       
       <div className="flex items-center gap-2">
-        <p className="text-xs text-muted-foreground">
+        <p className="hidden text-xs text-muted-foreground md:block">
           Click on a node to interact, double-click to add a branch
         </p>
+        
+        {isOwner && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm">
+                <MoreHorizontal className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem 
+                onClick={() => setShowDeleteDialog(true)}
+                className="text-destructive focus:text-destructive"
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                Delete subject
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
       </div>
+      
+      {/* Delete confirmation dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete this subject?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete &quot;{mindMap.title}&quot; and all its branches, comments, and votes. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? 'Deleting...' : 'Delete'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </header>
   )
 }

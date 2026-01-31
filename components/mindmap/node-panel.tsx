@@ -49,6 +49,7 @@ export function NodePanel({
   onClose 
 }: NodePanelProps) {
   const [content, setContent] = useState(node.content)
+  const [description, setDescription] = useState(node.description || '')
   const [nodeStatus, setNodeStatus] = useState<ContentStatus>((node.status || 'public') as ContentStatus)
   const [comments, setComments] = useState<Comment[]>([])
   const [newComment, setNewComment] = useState('')
@@ -62,6 +63,7 @@ export function NodePanel({
   
   useEffect(() => {
     setContent(node.content)
+    setDescription(node.description || '')
     loadComments()
   }, [node.id])
   
@@ -109,6 +111,21 @@ export function NodePanel({
       const result = await updateNode(formData)
       if (result.success) {
         onUpdate({ ...node, content })
+      }
+    })
+  }
+  
+  function handleDescriptionSave() {
+    if (description === (node.description || '')) return
+    
+    startTransition(async () => {
+      const formData = new FormData()
+      formData.set('nodeId', node.id)
+      formData.set('description', description)
+      
+      const result = await updateNode(formData)
+      if (result.success) {
+        onUpdate({ ...node, description })
       }
     })
   }
@@ -175,20 +192,40 @@ export function NodePanel({
       </CardHeader>
       <CardContent className="space-y-4">
         {/* Content */}
-        <div className="space-y-2">
-          {canEdit ? (
-            <>
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground">Title</label>
+            {canEdit ? (
               <Input
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
                 onBlur={handleContentSave}
                 onKeyDown={(e) => e.key === 'Enter' && handleContentSave()}
                 className="font-medium"
+                placeholder="Enter title..."
               />
-            </>
-          ) : (
-            <p className="font-medium">{node.content}</p>
-          )}
+            ) : (
+              <p className="font-medium">{node.content}</p>
+            )}
+          </div>
+          
+          <div className="space-y-1.5">
+            <label className="text-xs font-medium text-muted-foreground">Description</label>
+            {canEdit || isNodeOwner ? (
+              <Textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                onBlur={handleDescriptionSave}
+                placeholder="Add a description..."
+                rows={2}
+                className="resize-none text-sm"
+              />
+            ) : description ? (
+              <p className="text-sm text-muted-foreground">{description}</p>
+            ) : (
+              <p className="text-sm italic text-muted-foreground/60">No description</p>
+            )}
+          </div>
         </div>
         
         {/* Status Selector for node owner */}

@@ -181,6 +181,7 @@ export async function updateNode(formData: FormData) {
   
   const nodeId = formData.get('nodeId') as string
   const content = formData.get('content') as string
+  const description = formData.get('description') as string | null
   const positionX = formData.get('positionX') ? parseFloat(formData.get('positionX') as string) : undefined
   const positionY = formData.get('positionY') ? parseFloat(formData.get('positionY') as string) : undefined
   const color = formData.get('color') as string | null
@@ -192,6 +193,7 @@ export async function updateNode(formData: FormData) {
   
   // Only update content if it's a non-empty string (content column is NOT NULL)
   if (content && content.trim()) updates.content = content.trim()
+  if (description !== null) updates.description = description || null
   if (positionX !== undefined && !isNaN(positionX)) updates.position_x = positionX
   if (positionY !== undefined && !isNaN(positionY)) updates.position_y = positionY
   if (color) updates.color = color
@@ -308,6 +310,54 @@ export async function createComment(nodeId: string, content: string) {
   }
   
   return { success: true, comment: data }
+}
+
+export async function deleteMindMap(mindMapId: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  
+  if (!user) {
+    return { error: 'Not authenticated' }
+  }
+  
+  // First delete all related data (nodes, votes, comments will cascade)
+  const { error } = await supabase
+    .from('mind_maps')
+    .delete()
+    .eq('id', mindMapId)
+    .eq('user_id', user.id) // Ensure only owner can delete
+  
+  if (error) {
+    return { error: error.message }
+  }
+  
+  revalidatePath('/dashboard')
+  return { success: true }
+}
+
+export async function updateMindMapDescription(mindMapId: string, description: string) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  
+  if (!user) {
+    return { error: 'Not authenticated' }
+  }
+  
+  const { error } = await supabase
+    .from('mind_maps')
+    .update({ 
+      description: description || null,
+      updated_at: new Date().toISOString() 
+    })
+    .eq('id', mindMapId)
+    .eq('user_id', user.id)
+  
+  if (error) {
+    return { error: error.message }
+  }
+  
+  revalidatePath(`/mindmap/${mindMapId}`)
+  return { success: true }
 }
 
 export async function updateMindMapStatus(mindMapId: string, status: 'draft' | 'public' | 'private') {
