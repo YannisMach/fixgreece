@@ -3,35 +3,101 @@
 import React, { useState, useRef, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
-import { Plus, Minus, RotateCcw, ThumbsUp, ThumbsDown, Sparkles, MessageSquare } from 'lucide-react'
+import { Plus, Minus, RotateCcw, ThumbsUp, ThumbsDown, Sparkles, MessageSquare, X, Send, Flag } from 'lucide-react'
 import Link from 'next/link'
+import { SharedNode, SharedNodeData } from '@/components/mindmap/shared-node'
 
-interface DemoNode {
+interface DemoComment {
   id: string
+  author: string
   content: string
-  x: number
-  y: number
-  parentId: string | null
-  color: string
-  votes: number
-  userVote: -1 | 0 | 1 // -1 = downvoted, 0 = no vote, 1 = upvoted
-  comments: number
+  createdAt: Date
 }
 
-const INITIAL_NODES: DemoNode[] = [
-  { id: '1', content: 'Improving Greek Tourism', x: 400, y: 250, parentId: null, color: '#4F46E5', votes: 24, userVote: 0, comments: 12 },
-  { id: '2', content: 'Sustainable practices', x: 180, y: 120, parentId: '1', color: '#10B981', votes: 18, userVote: 0, comments: 5 },
-  { id: '3', content: 'Local experiences', x: 620, y: 120, parentId: '1', color: '#F59E0B', votes: 12, userVote: 0, comments: 3 },
-  { id: '4', content: 'Infrastructure', x: 180, y: 380, parentId: '1', color: '#8B5CF6', votes: 8, userVote: 0, comments: 7 },
-  { id: '5', content: 'Digital tools', x: 620, y: 380, parentId: '1', color: '#EC4899', votes: 15, userVote: 0, comments: 2 },
+interface DemoNodeData extends SharedNodeData {
+  userVote: -1 | 0 | 1
+  comments: DemoComment[]
+}
+
+const INITIAL_NODES: DemoNodeData[] = [
+  { 
+    id: '1', 
+    content: 'Improving Greek Tourism', 
+    position_x: 400, 
+    position_y: 250, 
+    parent_id: null, 
+    color: '#4F46E5', 
+    vote_count: 24, 
+    userVote: 0, 
+    comments_count: 2,
+    comments: [
+      { id: 'c1', author: 'Maria K.', content: 'Great initiative! We need more sustainable options.', createdAt: new Date('2024-01-15') },
+      { id: 'c2', author: 'Nikos P.', content: 'What about focusing on off-season tourism?', createdAt: new Date('2024-01-16') }
+    ]
+  },
+  { 
+    id: '2', 
+    content: 'Sustainable practices', 
+    position_x: 180, 
+    position_y: 120, 
+    parent_id: '1', 
+    color: '#10B981', 
+    vote_count: 18, 
+    userVote: 0, 
+    comments_count: 1,
+    comments: [
+      { id: 'c3', author: 'Anna G.', content: 'Eco-certifications would help here.', createdAt: new Date('2024-01-17') }
+    ]
+  },
+  { 
+    id: '3', 
+    content: 'Local experiences', 
+    position_x: 620, 
+    position_y: 120, 
+    parent_id: '1', 
+    color: '#F59E0B', 
+    vote_count: 12, 
+    userVote: 0, 
+    comments_count: 0,
+    comments: []
+  },
+  { 
+    id: '4', 
+    content: 'Infrastructure', 
+    position_x: 180, 
+    position_y: 380, 
+    parent_id: '1', 
+    color: '#8B5CF6', 
+    vote_count: 8, 
+    userVote: 0, 
+    comments_count: 1,
+    comments: [
+      { id: 'c4', author: 'Dimitris S.', content: 'Public transport needs major improvements.', createdAt: new Date('2024-01-18') }
+    ]
+  },
+  { 
+    id: '5', 
+    content: 'Digital tools', 
+    position_x: 620, 
+    position_y: 380, 
+    parent_id: '1', 
+    color: '#EC4899', 
+    vote_count: 15, 
+    userVote: 0, 
+    comments_count: 0,
+    comments: []
+  },
 ]
 
 const COLORS = ['#4F46E5', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899', '#06B6D4', '#EF4444']
+const DEMO_USERNAMES = ['Guest User', 'Visitor', 'Anonymous', 'Demo User']
 
 export function DemoCanvas() {
-  const [nodes, setNodes] = useState<DemoNode[]>(INITIAL_NODES)
-  const [selectedNode, setSelectedNode] = useState<DemoNode | null>(null)
+  const [nodes, setNodes] = useState<DemoNodeData[]>(INITIAL_NODES)
+  const [selectedNode, setSelectedNode] = useState<DemoNodeData | null>(null)
   const [pan, setPan] = useState({ x: 0, y: 0 })
   const [zoom, setZoom] = useState(1)
   const [isPanning, setIsPanning] = useState(false)
@@ -40,6 +106,7 @@ export function DemoCanvas() {
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
   const [editingNode, setEditingNode] = useState<string | null>(null)
   const [editContent, setEditContent] = useState('')
+  const [newComment, setNewComment] = useState('')
   const canvasRef = useRef<HTMLDivElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
 
@@ -74,7 +141,7 @@ export function DemoCanvas() {
         const y = (e.clientY - rect.top - pan.y - dragOffset.y) / zoom
         
         setNodes(prev => prev.map(n => 
-          n.id === dragNode ? { ...n, x, y } : n
+          n.id === dragNode ? { ...n, position_x: x, position_y: y } : n
         ))
       }
     }
@@ -99,34 +166,33 @@ export function DemoCanvas() {
     
     setDragNode(nodeId)
     setDragOffset({
-      x: x - node.x,
-      y: y - node.y
+      x: x - node.position_x,
+      y: y - node.position_y
     })
   }
 
-  const handleNodeClick = (node: DemoNode, e: React.MouseEvent) => {
-    e.stopPropagation()
+  const handleNodeSelect = (node: DemoNodeData) => {
     setSelectedNode(node)
   }
 
-  const handleNodeDoubleClick = (node: DemoNode, e: React.MouseEvent) => {
-    e.stopPropagation()
+  const handleNodeDoubleClick = (node: DemoNodeData) => {
     setEditingNode(node.id)
     setEditContent(node.content)
   }
 
-  const handleAddBranch = (parentNode: DemoNode) => {
+  const handleAddBranch = (parentNode: DemoNodeData) => {
     const offset = 150
-    const newNode: DemoNode = {
+    const newNode: DemoNodeData = {
       id: Date.now().toString(),
       content: 'New idea',
-      x: parentNode.x,
-      y: parentNode.y + offset,
-      parentId: parentNode.id,
+      position_x: parentNode.position_x,
+      position_y: parentNode.position_y + offset,
+      parent_id: parentNode.id,
       color: COLORS[Math.floor(Math.random() * COLORS.length)],
-      votes: 0,
+      vote_count: 0,
       userVote: 0,
-      comments: 0
+      comments_count: 0,
+      comments: []
     }
     setNodes(prev => [...prev, newNode])
     setSelectedNode(newNode)
@@ -156,12 +222,45 @@ export function DemoCanvas() {
         voteDelta = voteType * 2 // Remove old vote and add new
       }
       
-      return {
+      const updatedNode = {
         ...n,
         userVote: newUserVote,
-        votes: n.votes + voteDelta
+        vote_count: (n.vote_count ?? 0) + voteDelta
       }
+      
+      // Update selected node if it's the same
+      if (selectedNode?.id === nodeId) {
+        setSelectedNode(updatedNode)
+      }
+      
+      return updatedNode
     }))
+  }
+
+  const handleAddComment = () => {
+    if (!newComment.trim() || !selectedNode) return
+    
+    const comment: DemoComment = {
+      id: Date.now().toString(),
+      author: DEMO_USERNAMES[Math.floor(Math.random() * DEMO_USERNAMES.length)],
+      content: newComment.trim(),
+      createdAt: new Date()
+    }
+    
+    setNodes(prev => prev.map(n => {
+      if (n.id !== selectedNode.id) return n
+      
+      const updatedNode = {
+        ...n,
+        comments: [...n.comments, comment],
+        comments_count: (n.comments_count ?? 0) + 1
+      }
+      
+      setSelectedNode(updatedNode)
+      return updatedNode
+    }))
+    
+    setNewComment('')
   }
 
   const handleSaveEdit = () => {
@@ -182,23 +281,23 @@ export function DemoCanvas() {
   }
 
   // Generate curved path - same as actual canvas
-  const getConnectionPath = (from: DemoNode, to: DemoNode): string => {
-    const dx = to.x - from.x
-    const dy = to.y - from.y
+  const getConnectionPath = (from: DemoNodeData, to: DemoNodeData): string => {
+    const dx = to.position_x - from.position_x
+    const dy = to.position_y - from.position_y
     const distance = Math.sqrt(dx * dx + dy * dy)
     const curvature = Math.min(distance * 0.3, 100)
-    const midX = (from.x + to.x) / 2
-    const midY = (from.y + to.y) / 2
+    const midX = (from.position_x + to.position_x) / 2
+    const midY = (from.position_y + to.position_y) / 2
     const controlX = midX
     const controlY = midY - curvature * (Math.abs(dx) > Math.abs(dy) ? 1 : 0.3)
     
-    return `M ${from.x} ${from.y} Q ${controlX} ${controlY} ${to.x} ${to.y}`
+    return `M ${from.position_x} ${from.position_y} Q ${controlX} ${controlY} ${to.position_x} ${to.position_y}`
   }
 
   // Draw connections
   const renderConnections = () => {
-    return nodes.filter(n => n.parentId).map(node => {
-      const parent = nodes.find(p => p.id === node.parentId)
+    return nodes.filter(n => n.parent_id).map(node => {
+      const parent = nodes.find(p => p.id === node.parent_id)
       if (!parent) return null
       
       return (
@@ -215,7 +314,7 @@ export function DemoCanvas() {
           <path
             d={getConnectionPath(parent, node)}
             fill="none"
-            stroke={node.color}
+            stroke={node.color || '#6366F1'}
             strokeWidth={2}
             strokeLinecap="round"
             className="transition-colors"
@@ -303,157 +402,166 @@ export function DemoCanvas() {
             {renderConnections()}
           </svg>
           
-          {/* Nodes - styled like actual MindMapNode */}
+          {/* Nodes - using SharedNode component */}
           {nodes.map(node => {
             const isSelected = selectedNode?.id === node.id
             const isEditing = editingNode === node.id
-            const isRoot = !node.parentId
             const isDragging = dragNode === node.id
             
-            return (
+            return isEditing ? (
+              // Editing state - inline input
               <div
                 key={node.id}
-                className={cn(
-                  'group absolute flex cursor-pointer select-none flex-col items-center',
-                  isDragging && 'z-50 cursor-grabbing',
-                  isSelected && 'z-40'
-                )}
+                className="absolute z-50"
                 style={{
-                  left: node.x,
-                  top: node.y,
+                  left: node.position_x,
+                  top: node.position_y,
                   transform: 'translate(-50%, -50%)',
                 }}
-                onMouseDown={(e) => {
-                  if (e.button === 0) {
-                    handleNodeDragStart(node.id, e)
-                  }
-                }}
-                onClick={(e) => handleNodeClick(node, e)}
-                onDoubleClick={(e) => handleNodeDoubleClick(node, e)}
               >
-                {/* Quick add button - single button below node */}
-                {isSelected && (
-                  <button
-                    className="absolute -bottom-10 left-1/2 flex h-7 w-7 -translate-x-1/2 items-center justify-center rounded-full bg-primary text-primary-foreground opacity-0 shadow-lg transition-all hover:scale-110 group-hover:opacity-100"
-                    onClick={(e) => { e.stopPropagation(); handleAddBranch(node) }}
-                    title="Add branch"
-                  >
-                    <Plus className="h-4 w-4" />
-                  </button>
-                )}
-                
-                {/* Main node card - styled like actual MindMapNode */}
                 <div
-                  className={cn(
-                    'relative rounded-2xl border-2 bg-card px-4 py-3 shadow-lg transition-all duration-200',
-                    isRoot ? 'min-w-[160px] text-center' : 'max-w-[240px]',
-                    isDragging && 'scale-105 shadow-2xl',
-                    isSelected 
-                      ? 'border-primary shadow-xl ring-4 ring-primary/20' 
-                      : 'border-transparent hover:shadow-xl'
-                  )}
-                  style={{
-                    borderColor: isSelected ? undefined : node.color,
-                    boxShadow: isSelected ? undefined : `0 4px 20px -4px ${node.color}30`,
-                  }}
+                  className="rounded-2xl border-2 border-primary bg-card px-4 py-3 shadow-xl ring-4 ring-primary/20"
+                  style={{ minWidth: '160px' }}
                 >
-                  {/* Color indicator bar */}
                   <div 
                     className="absolute -top-0.5 left-4 right-4 h-1.5 rounded-full"
-                    style={{ backgroundColor: node.color }}
+                    style={{ backgroundColor: node.color || '#6366F1' }}
                   />
-                  
-                  {/* Content */}
-                  {isEditing ? (
-                    <Input
-                      value={editContent}
-                      onChange={(e) => setEditContent(e.target.value)}
-                      onBlur={handleSaveEdit}
-                      onKeyDown={(e) => e.key === 'Enter' && handleSaveEdit()}
-                      className="h-auto min-w-[120px] border-0 bg-transparent p-0 text-sm font-medium focus-visible:ring-0"
-                      autoFocus
-                    />
-                  ) : (
-                    <p className={cn(
-                      'font-medium leading-snug text-foreground',
-                      isRoot ? 'text-base' : 'text-sm'
-                    )}>
-                      {node.content}
-                    </p>
-                  )}
-                  
-                  {/* Stats bar - styled like actual MindMapNode */}
-                  {(node.votes !== 0 || node.comments > 0) && (
-                    <div className="mt-2 flex items-center justify-center gap-3 border-t border-border/50 pt-2 text-xs">
-                      {node.votes !== 0 && (
-                        <span className={cn(
-                          'flex items-center gap-1 font-semibold',
-                          node.votes > 0 && 'text-emerald-600',
-                          node.votes < 0 && 'text-red-500'
-                        )}>
-                          {node.votes > 0 ? (
-                            <ThumbsUp className="h-3 w-3" />
-                          ) : (
-                            <ThumbsDown className="h-3 w-3" />
-                          )}
-                          {node.votes > 0 ? '+' : ''}{node.votes}
-                        </span>
-                      )}
-                      {node.comments > 0 && (
-                        <span className="flex items-center gap-1 text-muted-foreground">
-                          <MessageSquare className="h-3 w-3" />
-                          {node.comments}
-                        </span>
-                      )}
-                    </div>
-                  )}
+                  <Input
+                    value={editContent}
+                    onChange={(e) => setEditContent(e.target.value)}
+                    onBlur={handleSaveEdit}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSaveEdit()}
+                    className="h-auto min-w-[120px] border-0 bg-transparent p-0 text-sm font-medium focus-visible:ring-0"
+                    autoFocus
+                  />
                 </div>
-                
-                {/* Connection dot */}
-                {!isRoot && (
-                  <div 
-                    className="absolute -top-1 left-1/2 h-2 w-2 -translate-x-1/2 rounded-full"
-                    style={{ backgroundColor: node.color }}
-                  />
-                )}
               </div>
+            ) : (
+              <SharedNode
+                key={node.id}
+                node={node}
+                isSelected={isSelected}
+                isDragging={isDragging}
+                onSelect={() => handleNodeSelect(node)}
+                onDragStart={(e) => handleNodeDragStart(node.id, e)}
+                onDoubleClick={() => handleNodeDoubleClick(node)}
+                onQuickAdd={() => handleAddBranch(node)}
+                canEdit={true}
+                showQuickAdd={isSelected}
+              />
             )
           })}
         </div>
         
-        {/* Selected node actions */}
+        {/* Node Panel - styled like the actual NodePanel */}
         {selectedNode && !editingNode && (
-          <div className="absolute bottom-4 left-1/2 z-20 flex -translate-x-1/2 items-center gap-2 rounded-xl border border-border bg-card p-2 shadow-lg">
-            <Button
-              variant={selectedNode.userVote === 1 ? 'default' : 'ghost'}
-              size="sm"
-              className={cn('h-8 gap-1.5', selectedNode.userVote === 1 && 'bg-emerald-600 hover:bg-emerald-700')}
-              onClick={() => handleVote(selectedNode.id, 1)}
-            >
-              <ThumbsUp className="h-4 w-4" />
-              {selectedNode.userVote === 1 ? 'Upvoted' : 'Upvote'}
-            </Button>
-            <div className="h-6 w-px bg-border" />
-            <Button
-              variant={selectedNode.userVote === -1 ? 'default' : 'ghost'}
-              size="sm"
-              className={cn('h-8 gap-1.5', selectedNode.userVote === -1 && 'bg-red-600 hover:bg-red-700')}
-              onClick={() => handleVote(selectedNode.id, -1)}
-            >
-              <ThumbsDown className="h-4 w-4" />
-              {selectedNode.userVote === -1 ? 'Downvoted' : 'Downvote'}
-            </Button>
-            <div className="h-6 w-px bg-border" />
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 gap-1.5"
-              onClick={() => handleAddBranch(selectedNode)}
-            >
-              <Plus className="h-4 w-4" />
-              Add branch
-            </Button>
-          </div>
+          <Card className="absolute right-4 top-4 z-20 w-80 shadow-xl">
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-base font-medium">
+                {!selectedNode.parent_id ? 'Main Topic' : 'Branch'}
+              </CardTitle>
+              <Button variant="ghost" size="sm" onClick={() => setSelectedNode(null)}>
+                <X className="h-4 w-4" />
+              </Button>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Content */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-muted-foreground">Title</label>
+                <p className="font-medium">{selectedNode.content}</p>
+              </div>
+              
+              {/* Voting */}
+              <div className="flex items-center justify-between rounded-lg border border-border p-2">
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleVote(selectedNode.id, 1)}
+                    className={cn(selectedNode.userVote === 1 && 'bg-emerald-100 text-emerald-600')}
+                  >
+                    <ThumbsUp className="h-4 w-4" />
+                  </Button>
+                  <span className={cn(
+                    'min-w-[2rem] text-center font-medium',
+                    (selectedNode.vote_count ?? 0) > 0 && 'text-emerald-600',
+                    (selectedNode.vote_count ?? 0) < 0 && 'text-red-500'
+                  )}>
+                    {selectedNode.vote_count ?? 0}
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => handleVote(selectedNode.id, -1)}
+                    className={cn(selectedNode.userVote === -1 && 'bg-red-100 text-red-600')}
+                  >
+                    <ThumbsDown className="h-4 w-4" />
+                  </Button>
+                </div>
+                
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-muted-foreground"
+                  title="Report (demo only)"
+                >
+                  <Flag className="h-4 w-4" />
+                </Button>
+              </div>
+              
+              {/* Comments Section */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <MessageSquare className="h-4 w-4" />
+                  Comments ({selectedNode.comments?.length ?? 0})
+                </div>
+                
+                <div className="max-h-32 space-y-2 overflow-y-auto">
+                  {selectedNode.comments?.length === 0 ? (
+                    <p className="py-2 text-center text-sm text-muted-foreground">
+                      No comments yet
+                    </p>
+                  ) : (
+                    selectedNode.comments?.map((comment) => (
+                      <div key={comment.id} className="rounded-lg bg-muted p-2">
+                        <p className="text-xs font-medium text-foreground">
+                          {comment.author}
+                        </p>
+                        <p className="mt-1 text-sm text-muted-foreground">{comment.content}</p>
+                      </div>
+                    ))
+                  )}
+                </div>
+                
+                {/* Add Comment */}
+                <div className="flex gap-2">
+                  <Input
+                    value={newComment}
+                    onChange={(e) => setNewComment(e.target.value)}
+                    placeholder="Add a comment..."
+                    onKeyDown={(e) => e.key === 'Enter' && handleAddComment()}
+                  />
+                  <Button size="icon" onClick={handleAddComment}>
+                    <Send className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+              
+              {/* Actions */}
+              <div className="border-t border-border pt-4">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full bg-transparent"
+                  onClick={() => handleAddBranch(selectedNode)}
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Branch
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
         )}
         
         {/* Instructions */}
