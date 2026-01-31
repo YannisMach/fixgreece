@@ -11,18 +11,12 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { 
   Plus, 
   Minus, 
-  Maximize2, 
-  Hand, 
-  MousePointer2,
+  Maximize2,
   Undo2,
   Redo2,
-  ZoomIn,
   Grid3X3,
-  Layers,
-  Share2,
-  Download,
-  Settings2,
-  HelpCircle
+  HelpCircle,
+  Layers
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -55,7 +49,7 @@ export function MindMapCanvas({ mindMap, initialNodes, canEdit, currentUserId }:
   const [zoom, setZoom] = useState(1)
   const [isPanning, setIsPanning] = useState(false)
   const [startPan, setStartPan] = useState<Position>({ x: 0, y: 0 })
-  const [tool, setTool] = useState<'select' | 'pan'>('select')
+  // Removed separate pan tool - canvas pans by default when dragging empty space
   const [showMinimap, setShowMinimap] = useState(true)
   const [showGrid, setShowGrid] = useState(true)
   const [snapToGrid, setSnapToGrid] = useState(false)
@@ -64,6 +58,7 @@ export function MindMapCanvas({ mindMap, initialNodes, canEdit, currentUserId }:
   const [history, setHistory] = useState<HistoryState[]>([{ nodes: initialNodes }])
   const [historyIndex, setHistoryIndex] = useState(0)
   const [showHelp, setShowHelp] = useState(false)
+  const [tool, setTool] = useState<'select' | 'pan'>('select') // Declare tool state
   
   const canvasRef = useRef<HTMLDivElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
@@ -135,14 +130,10 @@ export function MindMapCanvas({ mindMap, initialNodes, canEdit, currentUserId }:
         return
       }
       
-      // Tool shortcuts
-      if (e.key === 'v' || e.key === '1') {
+      // Space to temporarily enable pan mode (like Figma/Miro)
+      if (e.key === ' ' && !isPanning) {
         e.preventDefault()
-        setTool('select')
-      }
-      if (e.key === 'h' || e.key === '2') {
-        e.preventDefault()
-        setTool('pan')
+        document.body.style.cursor = 'grab'
       }
       
       // Zoom shortcuts
@@ -228,16 +219,19 @@ export function MindMapCanvas({ mindMap, initialNodes, canEdit, currentUserId }:
     return () => canvas.removeEventListener('wheel', handleWheel)
   }, [zoom, pan])
   
-  // Handle panning
+  // Handle panning - click and drag on canvas background to pan (Miro/Figma style)
   function handleMouseDown(e: React.MouseEvent) {
-    if (e.button === 1 || (e.button === 0 && (tool === 'pan' || e.shiftKey))) {
-      // Middle mouse button or pan tool or shift+click
+    const target = e.target as HTMLElement
+    const isCanvasBackground = target === canvasRef.current || target.classList.contains('canvas-bg')
+    
+    if (e.button === 1 || (e.button === 0 && isCanvasBackground)) {
+      // Middle mouse button OR left click on empty canvas = pan
       setIsPanning(true)
       setStartPan({ x: e.clientX - pan.x, y: e.clientY - pan.y })
       e.preventDefault()
-    } else if (e.target === canvasRef.current || (e.target as HTMLElement).classList.contains('canvas-bg')) {
-      // Clicked on empty canvas
-      if (tool === 'select') {
+      
+      // Also deselect if clicking on empty space
+      if (isCanvasBackground) {
         setSelectedNode(null)
         setSelectedNodes(new Set())
       }
@@ -288,7 +282,7 @@ export function MindMapCanvas({ mindMap, initialNodes, canEdit, currentUserId }:
   
   // Handle node drag start
   function handleNodeDragStart(nodeId: string, e: React.MouseEvent) {
-    if (!canEdit || tool !== 'select') return
+    if (!canEdit) return
     
     const node = nodes.find(n => n.id === nodeId)
     if (!node) return
@@ -308,7 +302,7 @@ export function MindMapCanvas({ mindMap, initialNodes, canEdit, currentUserId }:
   
   // Handle double-click to create node
   async function handleDoubleClick(e: React.MouseEvent, parentNode?: NodeType) {
-    if (!canEdit || tool === 'pan') return
+    if (!canEdit) return
     
     const rect = canvasRef.current?.getBoundingClientRect()
     if (!rect) return
@@ -382,9 +376,7 @@ export function MindMapCanvas({ mindMap, initialNodes, canEdit, currentUserId }:
   }
   
   function handleNodeSelect(node: NodeType) {
-    if (tool === 'select') {
-      setSelectedNode(node)
-    }
+    setSelectedNode(node)
   }
   
   function handleNodeUpdate(updatedNode: NodeType) {
@@ -462,8 +454,7 @@ export function MindMapCanvas({ mindMap, initialNodes, canEdit, currentUserId }:
         <div
           ref={canvasRef}
           className={cn(
-            'canvas-bg absolute inset-0 transition-[background-size] duration-200',
-            (tool === 'pan' || isPanning) && 'cursor-grab',
+            'canvas-bg absolute inset-0 cursor-grab transition-[background-size] duration-200',
             isPanning && 'cursor-grabbing'
           )}
           style={{
@@ -547,38 +538,9 @@ export function MindMapCanvas({ mindMap, initialNodes, canEdit, currentUserId }:
           </div>
         </div>
         
-        {/* Left toolbar - Miro style */}
+        {/* Left toolbar - Simplified (pan is now default on canvas drag) */}
         <div className="absolute left-4 top-1/2 -translate-y-1/2">
           <div className="flex flex-col gap-1 rounded-xl border border-border bg-card p-1.5 shadow-lg">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant={tool === 'select' ? 'secondary' : 'ghost'}
-                  size="sm"
-                  className="h-9 w-9 rounded-lg p-0"
-                  onClick={() => setTool('select')}
-                >
-                  <MousePointer2 className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="right">Select (V)</TooltipContent>
-            </Tooltip>
-            
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant={tool === 'pan' ? 'secondary' : 'ghost'}
-                  size="sm"
-                  className="h-9 w-9 rounded-lg p-0"
-                  onClick={() => setTool('pan')}
-                >
-                  <Hand className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent side="right">Pan (H)</TooltipContent>
-            </Tooltip>
-            
-            <div className="my-1 h-px bg-border" />
             
             <Tooltip>
               <TooltipTrigger asChild>
