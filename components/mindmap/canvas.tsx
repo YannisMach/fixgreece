@@ -58,7 +58,6 @@ export function MindMapCanvas({ mindMap, initialNodes, canEdit, currentUserId }:
   const [history, setHistory] = useState<HistoryState[]>([{ nodes: initialNodes }])
   const [historyIndex, setHistoryIndex] = useState(0)
   const [showHelp, setShowHelp] = useState(false)
-  const [tool, setTool] = useState<'select' | 'pan'>('select') // Declare tool state
   
   const canvasRef = useRef<HTMLDivElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
