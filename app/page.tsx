@@ -43,12 +43,12 @@ export default function HomePage() {
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 </Link>
-                <Link href="/explore">
+                <a href="#demo">
                   <Button size="lg" variant="outline" className="h-12 rounded-full bg-transparent px-8 text-base">
                     <Play className="mr-2 h-4 w-4" />
                     See it in action
                   </Button>
-                </Link>
+                </a>
               </div>
               
               <p className="mt-4 text-sm text-muted-foreground">
@@ -57,7 +57,7 @@ export default function HomePage() {
             </div>
             
             {/* Hero Visual - Mind Map Preview */}
-            <div className="relative mx-auto mt-16 max-w-5xl">
+            <div id="demo" className="relative mx-auto mt-16 max-w-5xl scroll-mt-8">
               <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-2xl shadow-primary/5">
                 <div className="flex items-center gap-2 border-b border-border bg-muted/30 px-4 py-3">
                   <div className="flex gap-1.5">
