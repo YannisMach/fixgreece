@@ -2,9 +2,110 @@ import React from "react"
 import { Header } from '@/components/header'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
-import { ArrowRight, Users, GitBranch, ThumbsUp, MessageSquare, Globe, Zap, Play } from 'lucide-react'
+import { ArrowRight, Users, GitBranch, ThumbsUp, MessageSquare, Globe, Zap, Play, TrendingUp, Eye } from 'lucide-react'
+import { createClient } from '@/lib/supabase/server'
 
-export default function HomePage() {
+async function getTopSubjects() {
+  try {
+    const supabase = await createClient()
+    
+    const { data: mindMaps, error } = await supabase
+      .from('mind_maps')
+      .select(`
+        id,
+        title,
+        description,
+        created_at,
+        user_id,
+        profiles!mind_maps_user_id_fkey (
+          first_name,
+          last_name,
+          nickname,
+          display_name_format
+        )
+      `)
+      .eq('is_public', true)
+      .order('created_at', { ascending: false })
+      .limit(5)
+    
+    if (error) {
+      console.error('Error fetching top subjects:', error)
+      return []
+    }
+    
+    // Get node counts and vote counts for each mind map
+    const mindMapIds = mindMaps?.map(m => m.id) || []
+    
+    if (mindMapIds.length === 0) return []
+    
+    const { data: nodes } = await supabase
+      .from('nodes')
+      .select('id, mind_map_id')
+      .in('mind_map_id', mindMapIds)
+    
+    const nodeIds = nodes?.map(n => n.id) || []
+    
+    let voteCounts: Record<string, number> = {}
+    if (nodeIds.length > 0) {
+      const { data: votes } = await supabase
+        .from('votes')
+        .select('node_id, vote_type')
+        .in('node_id', nodeIds)
+      
+      // Calculate total votes per mind map
+      nodes?.forEach(node => {
+        const nodeVotes = votes?.filter(v => v.node_id === node.id) || []
+        const totalVotes = nodeVotes.reduce((sum, v) => sum + Math.abs(v.vote_type), 0)
+        voteCounts[node.mind_map_id] = (voteCounts[node.mind_map_id] || 0) + totalVotes
+      })
+    }
+    
+    return mindMaps?.map(map => {
+      const nodeCount = nodes?.filter(n => n.mind_map_id === map.id).length || 0
+      const profile = map.profiles as { first_name: string; last_name: string; nickname: string; display_name_format: string } | null
+      
+      let displayName = 'Anonymous'
+      if (profile) {
+        switch (profile.display_name_format) {
+          case 'first_name':
+            displayName = profile.first_name
+            break
+          case 'nickname':
+            displayName = profile.nickname
+            break
+          case 'first_last':
+            displayName = `${profile.first_name} ${profile.last_name}`
+            break
+          case 'first_initial':
+            displayName = `${profile.first_name} ${profile.last_name?.charAt(0) || ''}.`
+            break
+          case 'nick_initial':
+            displayName = `${profile.nickname} (${profile.first_name?.charAt(0) || ''}.)`
+            break
+          default:
+            displayName = profile.first_name || profile.nickname
+        }
+      }
+      
+      return {
+        id: map.id,
+        title: map.title,
+        description: map.description,
+        createdAt: map.created_at,
+        authorName: displayName,
+        nodeCount,
+        voteCount: voteCounts[map.id] || 0,
+      }
+    }) || []
+  } catch (err) {
+    console.error('Error in getTopSubjects:', err)
+    return []
+  }
+}
+
+export default async function HomePage() {
+  const topSubjects = await getTopSubjects()
+  
   return (
     <div className="min-h-screen bg-background">
       <Header />
@@ -160,8 +261,84 @@ export default function HomePage() {
           </div>
         </section>
 
+        {/* Trending Subjects Section */}
+        {topSubjects.length > 0 && (
+          <section className="border-y border-border bg-card py-16">
+            <div className="mx-auto max-w-7xl px-4 lg:px-8">
+              <div className="mb-10 flex items-center justify-between">
+                <div>
+                  <div className="mb-2 flex items-center gap-2 text-sm font-medium text-primary">
+                    <TrendingUp className="h-4 w-4" />
+                    Trending Now
+                  </div>
+                  <h2 className="text-2xl font-bold text-foreground sm:text-3xl">
+                    Top subjects being discussed
+                  </h2>
+                </div>
+                <Link href="/explore">
+                  <Button variant="outline" className="hidden bg-transparent sm:flex">
+                    View all
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </Link>
+              </div>
+              
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+                {topSubjects.map((subject, index) => (
+                  <Link 
+                    key={subject.id} 
+                    href={`/mindmap/${subject.id}`}
+                    className="group"
+                  >
+                    <div className="relative h-full overflow-hidden rounded-xl border border-border bg-background p-5 transition-all hover:border-primary/50 hover:shadow-lg hover:shadow-primary/5">
+                      <div className="mb-3 flex items-center gap-2">
+                        <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
+                          {index + 1}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          by {subject.authorName}
+                        </span>
+                      </div>
+                      
+                      <h3 className="mb-2 line-clamp-2 font-semibold text-foreground group-hover:text-primary transition-colors">
+                        {subject.title}
+                      </h3>
+                      
+                      {subject.description && (
+                        <p className="mb-4 line-clamp-2 text-sm text-muted-foreground">
+                          {subject.description}
+                        </p>
+                      )}
+                      
+                      <div className="mt-auto flex items-center gap-4 text-xs text-muted-foreground">
+                        <div className="flex items-center gap-1">
+                          <GitBranch className="h-3.5 w-3.5" />
+                          {subject.nodeCount} ideas
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <ThumbsUp className="h-3.5 w-3.5" />
+                          {subject.voteCount} votes
+                        </div>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+              
+              <div className="mt-6 text-center sm:hidden">
+                <Link href="/explore">
+                  <Button variant="outline" className="bg-transparent">
+                    View all subjects
+                    <ArrowRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          </section>
+        )}
+
         {/* Social proof */}
-        <section className="border-y border-border bg-muted/30 py-12">
+        <section className="border-b border-border bg-muted/30 py-12">
           <div className="mx-auto max-w-7xl px-4 lg:px-8">
             <div className="grid grid-cols-2 gap-8 md:grid-cols-4">
               <div className="text-center">
