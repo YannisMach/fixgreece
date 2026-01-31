@@ -221,7 +221,15 @@ export function MindMapCanvas({ mindMap, initialNodes, canEdit, currentUserId }:
   // Handle panning - click and drag on canvas background to pan (Miro/Figma style)
   function handleMouseDown(e: React.MouseEvent) {
     const target = e.target as HTMLElement
-    const isCanvasBackground = target === canvasRef.current || target.classList.contains('canvas-bg')
+    
+    // Check if clicking on canvas background, SVG, or content container (not on nodes)
+    const isCanvasBackground = 
+      target === canvasRef.current || 
+      target.classList.contains('canvas-bg') ||
+      target.tagName === 'svg' ||
+      target.tagName === 'path' ||
+      target.tagName === 'g' ||
+      target === contentRef.current
     
     if (e.button === 1 || (e.button === 0 && isCanvasBackground)) {
       // Middle mouse button OR left click on empty canvas = pan
@@ -230,10 +238,8 @@ export function MindMapCanvas({ mindMap, initialNodes, canEdit, currentUserId }:
       e.preventDefault()
       
       // Also deselect if clicking on empty space
-      if (isCanvasBackground) {
-        setSelectedNode(null)
-        setSelectedNodes(new Set())
-      }
+      setSelectedNode(null)
+      setSelectedNodes(new Set())
     }
   }
   
