@@ -4,17 +4,26 @@ import { Button } from '@/components/ui/button'
 import { UserMenu } from './user-menu'
 
 export async function Header() {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  
+  let user = null
   let profile = null
-  if (user) {
-    const { data } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user.id)
-      .single()
-    profile = data
+  
+  try {
+    const supabase = await createClient()
+    const { data: { user: authUser }, error } = await supabase.auth.getUser()
+    
+    if (!error && authUser) {
+      user = authUser
+      const { data } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', authUser.id)
+        .single()
+      profile = data
+    }
+  } catch (err) {
+    // Silently handle auth errors on public pages
+    // User will appear as logged out
+    console.error('Header auth error:', err)
   }
   
   return (
