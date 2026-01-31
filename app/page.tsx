@@ -24,7 +24,7 @@ async function getTopSubjects() {
           display_name_format
         )
       `)
-      .eq('is_public', true)
+      .eq('status', 'public')
       .order('created_at', { ascending: false })
       .limit(5)
     

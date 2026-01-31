@@ -1,30 +1,54 @@
+'use client'
+
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/server'
+import { createClient } from '@/lib/supabase/client'
 import { Button } from '@/components/ui/button'
 import { UserMenu } from './user-menu'
+import { useEffect, useState } from 'react'
+import type { User } from '@supabase/supabase-js'
+import type { Profile } from '@/lib/types'
 
-export async function Header() {
-  let user = null
-  let profile = null
+export function Header() {
+  const [user, setUser] = useState<User | null>(null)
+  const [profile, setProfile] = useState<Profile | null>(null)
+  const [loading, setLoading] = useState(true)
   
-  try {
-    const supabase = await createClient()
-    const { data: { user: authUser }, error } = await supabase.auth.getUser()
+  useEffect(() => {
+    let mounted = true
     
-    if (!error && authUser) {
-      user = authUser
-      const { data } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', authUser.id)
-        .single()
-      profile = data
+    async function loadUser() {
+      try {
+        const supabase = createClient()
+        const { data: { user: authUser } } = await supabase.auth.getUser()
+        
+        if (!mounted) return
+        
+        if (authUser) {
+          setUser(authUser)
+          const { data } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', authUser.id)
+            .single()
+          if (mounted) {
+            setProfile(data)
+          }
+        }
+      } catch (err) {
+        // Silently handle errors - user will appear logged out
+      } finally {
+        if (mounted) {
+          setLoading(false)
+        }
+      }
     }
-  } catch (err) {
-    // Silently handle auth errors on public pages
-    // User will appear as logged out
-    console.error('Header auth error:', err)
-  }
+    
+    loadUser()
+    
+    return () => {
+      mounted = false
+    }
+  }, [])
   
   return (
     <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-lg">
@@ -69,7 +93,9 @@ export async function Header() {
         </div>
         
         <nav className="flex items-center gap-3">
-          {user ? (
+          {loading ? (
+            <div className="h-8 w-20 animate-pulse rounded-full bg-muted" />
+          ) : user ? (
             <UserMenu profile={profile} />
           ) : (
             <>
