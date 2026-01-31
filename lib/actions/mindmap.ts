@@ -190,10 +190,11 @@ export async function updateNode(formData: FormData) {
     updated_at: new Date().toISOString(),
   }
   
-  if (content !== undefined) updates.content = content
-  if (positionX !== undefined) updates.position_x = positionX
-  if (positionY !== undefined) updates.position_y = positionY
-  if (color !== undefined) updates.color = color
+  // Only update content if it's a non-empty string (content column is NOT NULL)
+  if (content && content.trim()) updates.content = content.trim()
+  if (positionX !== undefined && !isNaN(positionX)) updates.position_x = positionX
+  if (positionY !== undefined && !isNaN(positionY)) updates.position_y = positionY
+  if (color) updates.color = color
   if (status) updates.status = status
   
   const { error } = await supabase
