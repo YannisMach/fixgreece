@@ -778,6 +778,7 @@ export function MindMapCanvas({ mindMap, initialNodes, canEdit, currentUserId }:
   node={selectedNode}
   canEdit={canEdit}
   currentUserId={currentUserId}
+  mindMapOwnerId={mindMap.user_id}
   isSaved={savedNodes.has(selectedNode.id)}
   saveId={savedNodes.get(selectedNode.id)}
   onUpdate={handleNodeUpdate}

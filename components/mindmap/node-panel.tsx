@@ -41,6 +41,7 @@ interface NodePanelProps {
   node: NodeType
   canEdit: boolean
   currentUserId?: string
+  mindMapOwnerId?: string
   isSaved?: boolean
   saveId?: string
   onUpdate: (node: NodeType) => void
@@ -54,6 +55,7 @@ export function NodePanel({
   node, 
   canEdit, 
   currentUserId,
+  mindMapOwnerId,
   isSaved: initialSaved = false,
   saveId: initialSaveId,
   onUpdate, 
@@ -81,8 +83,10 @@ export function NodePanel({
   const panelRef = useRef<HTMLDivElement>(null)
   
   const isRoot = !node.parent_id
-  const canDelete = canEdit && !isRoot && node.user_id === currentUserId
-  const isNodeOwner = node.user_id === currentUserId
+  const isMindMapOwner = currentUserId && mindMapOwnerId && currentUserId === mindMapOwnerId
+  const isNodeOwner = currentUserId && node.user_id === currentUserId
+  // Can delete if: not root AND (is mindmap owner OR created this node)
+  const canDelete = !isRoot && (isMindMapOwner || isNodeOwner)
   
   useEffect(() => {
     setContent(node.content)
@@ -193,7 +197,7 @@ export function NodePanel({
   }
   
   function handleDelete() {
-    if (!canDelete) return
+    if (!canDelete || !currentUserId) return
     
     startTransition(async () => {
       const result = await deleteNode(node.id)
@@ -516,8 +520,8 @@ export function NodePanel({
         </Tabs>
         
         {/* Actions */}
-        {canEdit && (
-          <div className="flex gap-2 border-t border-border pt-4">
+        <div className="flex gap-2 border-t border-border pt-4">
+          {canEdit && (
             <Button
               variant="outline"
               size="sm"
@@ -527,18 +531,20 @@ export function NodePanel({
               <Plus className="mr-2 h-4 w-4" />
               Add Branch
             </Button>
-            {canDelete && (
-              <Button
-                variant="destructive"
-                size="sm"
-                onClick={handleDelete}
-                disabled={isPending}
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            )}
-          </div>
-        )}
+          )}
+          {canDelete && (
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={handleDelete}
+              disabled={isPending}
+              className={!canEdit ? 'flex-1' : ''}
+            >
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete
+            </Button>
+          )}
+        </div>
       </CardContent>
     </Card>
   )
