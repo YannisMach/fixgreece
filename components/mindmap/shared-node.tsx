@@ -102,7 +102,6 @@ export function SharedNode({
           onClick={(e) => { 
             e.stopPropagation()
             e.preventDefault()
-            console.log('[v0] Quick add button clicked, calling onQuickAdd')
             onQuickAdd() 
           }}
           title="Add branch"

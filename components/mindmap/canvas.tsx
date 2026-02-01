@@ -364,11 +364,7 @@ export function MindMapCanvas({ mindMap, initialNodes, canEdit, currentUserId }:
   
   // Quick add branch from node
   async function handleQuickAddBranch(parentNode: NodeType, direction: 'left' | 'right' | 'up' | 'down') {
-    console.log('[v0] handleQuickAddBranch called', { parentNode: parentNode.id, direction, canEdit })
-    if (!canEdit) {
-      console.log('[v0] Cannot edit, returning')
-      return
-    }
+    if (!canEdit) return
     
     const offset = 150
     let x = parentNode.position_x
@@ -395,12 +391,9 @@ export function MindMapCanvas({ mindMap, initialNodes, canEdit, currentUserId }:
     formData.set('color', getRandomColor())
     formData.set('status', 'public')
     
-    console.log('[v0] Creating node...')
     const result = await createNode(formData)
-    console.log('[v0] createNode result:', result)
     
     if (result.success && result.node) {
-      console.log('[v0] New node created with user_id:', result.node.user_id)
       const newNode = { ...result.node, vote_count: 0, user_vote: 0, comments_count: 0 }
       const newNodes = [...nodes, newNode]
       setNodes(newNodes)

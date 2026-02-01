@@ -88,16 +88,6 @@ export function NodePanel({
   // Can delete if: not root AND user is logged in AND (is mindmap owner OR created this node)
   const canDelete = !isRoot && !!currentUserId && (isMindMapOwner || isNodeOwner)
   
-  console.log('[v0] Delete check:', {
-    isRoot,
-    currentUserId,
-    mindMapOwnerId,
-    nodeUserId: node.user_id,
-    isMindMapOwner,
-    isNodeOwner,
-    canDelete
-  })
-  
   useEffect(() => {
     setContent(node.content)
     setDescription(node.description || '')
@@ -192,9 +182,18 @@ export function NodePanel({
   }
   
   function handleDescriptionSave() {
-    // Description saving disabled until database column is added
-    // TODO: Enable this when 'description' column exists in nodes table
-    console.log('[v0] Description save skipped - column not yet in database')
+    if (description === (node.description || '')) return
+    
+    startTransition(async () => {
+      const formData = new FormData()
+      formData.set('nodeId', node.id)
+      formData.set('description', description)
+      
+      const result = await updateNode(formData)
+      if (result.success) {
+        onUpdate({ ...node, description })
+      }
+    })
   }
   
   function handleDelete() {
@@ -351,14 +350,25 @@ export function NodePanel({
           <div className="space-y-1.5">
             <label className="text-xs font-medium text-muted-foreground">Description</label>
             {canEdit || isNodeOwner ? (
-              <Textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                onBlur={handleDescriptionSave}
-                placeholder="Add a description..."
-                rows={2}
-                className="resize-none text-sm"
-              />
+              <div className="space-y-1.5">
+                <Textarea
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  placeholder="Add a description..."
+                  rows={2}
+                  className="resize-none text-sm"
+                />
+                {description !== (node.description || '') && (
+                  <Button
+                    size="sm"
+                    onClick={handleDescriptionSave}
+                    disabled={isPending}
+                    className="h-7 text-xs"
+                  >
+                    Save Description
+                  </Button>
+                )}
+              </div>
             ) : description ? (
               <p className="text-sm text-muted-foreground">{description}</p>
             ) : (
@@ -429,6 +439,18 @@ export function NodePanel({
           </div>
           
           <div className="flex items-center gap-1">
+            {canDelete && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleDelete}
+                disabled={isPending}
+                className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                title="Delete branch"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="sm"
@@ -521,8 +543,8 @@ export function NodePanel({
         </Tabs>
         
         {/* Actions */}
-        <div className="flex gap-2 border-t border-border pt-4">
-          {canEdit && (
+        {canEdit && (
+          <div className="flex gap-2 border-t border-border pt-4">
             <Button
               variant="outline"
               size="sm"
@@ -532,20 +554,8 @@ export function NodePanel({
               <Plus className="mr-2 h-4 w-4" />
               Add Branch
             </Button>
-          )}
-          {canDelete && (
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={handleDelete}
-              disabled={isPending}
-              className={!canEdit ? 'flex-1' : ''}
-            >
-              <Trash2 className="mr-2 h-4 w-4" />
-              Delete
-            </Button>
-          )}
-        </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   )
