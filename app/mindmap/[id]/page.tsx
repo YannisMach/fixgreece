@@ -66,9 +66,26 @@ export default async function MindMapPage({ params }: MindMapPageProps) {
   const isOwner = user?.id === mindMap.user_id
   const canEdit = !!user && (isOwner || mindMap.is_public)
   
+  // Check if subject is saved by current user
+  let isSaved = false
+  if (user && !isOwner) {
+    const { data: save } = await supabase
+      .from('saves')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('mind_map_id', id)
+      .single()
+    isSaved = !!save
+  }
+  
   return (
     <div className="flex h-screen flex-col bg-background">
-      <MindMapHeader mindMap={mindMap} isOwner={isOwner} />
+      <MindMapHeader 
+        mindMap={mindMap} 
+        isOwner={isOwner} 
+        isSaved={isSaved}
+        currentUserId={user?.id}
+      />
       <MindMapCanvas 
         mindMap={mindMap} 
         initialNodes={enrichedNodes}

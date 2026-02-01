@@ -6,6 +6,7 @@ import { MindMapNode } from './node'
 import { NodePanel } from './node-panel'
 import { Minimap } from './minimap'
 import { createNode, updateNode } from '@/lib/actions/mindmap'
+import { getSavedNodeIds } from '@/lib/actions/saves'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { 
@@ -58,9 +59,30 @@ export function MindMapCanvas({ mindMap, initialNodes, canEdit, currentUserId }:
   const [history, setHistory] = useState<HistoryState[]>([{ nodes: initialNodes }])
   const [historyIndex, setHistoryIndex] = useState(0)
   const [showHelp, setShowHelp] = useState(false)
+  const [savedNodes, setSavedNodes] = useState<Map<string, string>>(new Map())
   
   const canvasRef = useRef<HTMLDivElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
+  
+  // Load saved nodes for current user
+  useEffect(() => {
+    if (currentUserId) {
+      getSavedNodeIds().then(setSavedNodes)
+    }
+  }, [currentUserId])
+  
+  // Handle save change from node panel
+  const handleSaveChange = useCallback((nodeId: string, saved: boolean, saveId?: string) => {
+    setSavedNodes(prev => {
+      const next = new Map(prev)
+      if (saved && saveId) {
+        next.set(nodeId, saveId)
+      } else {
+        next.delete(nodeId)
+      }
+      return next
+    })
+  }, [])
   
   // Calculate canvas bounds for minimap
   const canvasBounds = useMemo(() => {
@@ -752,12 +774,15 @@ export function MindMapCanvas({ mindMap, initialNodes, canEdit, currentUserId }:
         
         {/* Node panel */}
         {selectedNode && (
-          <NodePanel
-            node={selectedNode}
-            canEdit={canEdit}
-            currentUserId={currentUserId}
-            onUpdate={handleNodeUpdate}
-            onDelete={handleNodeDelete}
+<NodePanel
+  node={selectedNode}
+  canEdit={canEdit}
+  currentUserId={currentUserId}
+  isSaved={savedNodes.has(selectedNode.id)}
+  saveId={savedNodes.get(selectedNode.id)}
+  onUpdate={handleNodeUpdate}
+  onDelete={handleNodeDelete}
+  onSaveChange={(saved, saveId) => handleSaveChange(selectedNode.id, saved, saveId)}
             onAddBranch={handleAddBranch}
             onClose={() => setSelectedNode(null)}
           />

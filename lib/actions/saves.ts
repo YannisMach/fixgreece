@@ -316,6 +316,65 @@ export async function isMindMapSaved(mindMapId: string): Promise<boolean> {
   return !!data
 }
 
+// Check if node is saved and return save info
+export async function getNodeSaveInfo(nodeId: string): Promise<{ isSaved: boolean; saveId?: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  
+  if (!user) return { isSaved: false }
+  
+  const { data } = await supabase
+    .from('saves')
+    .select('id')
+    .eq('user_id', user.id)
+    .eq('node_id', nodeId)
+    .single()
+  
+  return data ? { isSaved: true, saveId: data.id } : { isSaved: false }
+}
+
+// Get all saved node IDs for a user (for batch checking)
+export async function getSavedNodeIds(): Promise<Map<string, string>> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  
+  if (!user) return new Map()
+  
+  const { data } = await supabase
+    .from('saves')
+    .select('id, node_id')
+    .eq('user_id', user.id)
+    .not('node_id', 'is', null)
+  
+  const map = new Map<string, string>()
+  data?.forEach(s => {
+    if (s.node_id) map.set(s.node_id, s.id)
+  })
+  return map
+}
+
+// Unsave node
+export async function unsaveNode(nodeId: string): Promise<boolean> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  
+  if (!user) return false
+  
+  const { error } = await supabase
+    .from('saves')
+    .delete()
+    .eq('user_id', user.id)
+    .eq('node_id', nodeId)
+  
+  if (error) {
+    console.error('Error unsaving node:', error)
+    return false
+  }
+  
+  revalidatePath('/saves')
+  return true
+}
+
 // Move save to folder
 export async function moveSaveToFolder(saveId: string, folderId: string | null): Promise<boolean> {
   const supabase = await createClient()

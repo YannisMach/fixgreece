@@ -5,8 +5,9 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { MindMap, Profile, formatDisplayName, ContentStatus } from '@/lib/types'
-import { ArrowLeft, Globe, Lock, FileEdit, ChevronDown, Trash2, MoreHorizontal } from 'lucide-react'
+import { ArrowLeft, Globe, Lock, FileEdit, ChevronDown, Trash2, MoreHorizontal, Bookmark, BookmarkCheck } from 'lucide-react'
 import { updateMindMapStatus, deleteMindMap, updateMindMapDescription } from '@/lib/actions/mindmap'
+import { saveMindMap, unsaveMindMap } from '@/lib/actions/saves'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -28,6 +29,8 @@ import {
 interface MindMapHeaderProps {
   mindMap: MindMap & { profiles: Profile }
   isOwner: boolean
+  isSaved?: boolean
+  currentUserId?: string
 }
 
 const statusConfig: Record<ContentStatus, { icon: typeof Globe; label: string; className: string; bgClass: string }> = {
@@ -36,13 +39,15 @@ const statusConfig: Record<ContentStatus, { icon: typeof Globe; label: string; c
   private: { icon: Lock, label: 'Private', className: 'text-muted-foreground', bgClass: 'bg-muted' },
 }
 
-export function MindMapHeader({ mindMap, isOwner }: MindMapHeaderProps) {
+export function MindMapHeader({ mindMap, isOwner, isSaved: initialSaved = false, currentUserId }: MindMapHeaderProps) {
   const displayName = mindMap.profiles ? formatDisplayName(mindMap.profiles) : 'Unknown'
   const currentStatus = (mindMap.status || (mindMap.is_public ? 'public' : 'private')) as ContentStatus
   const [status, setStatus] = useState<ContentStatus>(currentStatus)
   const [isUpdating, setIsUpdating] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [isSaved, setIsSaved] = useState(initialSaved)
+  const [isSaving, setIsSaving] = useState(false)
   const router = useRouter()
   
   const config = statusConfig[status]
@@ -69,6 +74,20 @@ export function MindMapHeader({ mindMap, isOwner }: MindMapHeaderProps) {
       setIsDeleting(false)
       setShowDeleteDialog(false)
     }
+  }
+  
+  async function handleSaveToggle() {
+    if (!currentUserId) return
+    
+    setIsSaving(true)
+    if (isSaved) {
+      const success = await unsaveMindMap(mindMap.id)
+      if (success) setIsSaved(false)
+    } else {
+      const save = await saveMindMap(mindMap.id)
+      if (save) setIsSaved(true)
+    }
+    setIsSaving(false)
   }
   
   return (
@@ -136,6 +155,20 @@ export function MindMapHeader({ mindMap, isOwner }: MindMapHeaderProps) {
         <p className="hidden text-xs text-muted-foreground md:block">
           Click on a node to interact, double-click to add a branch
         </p>
+        
+        {/* Save button for non-owners */}
+        {!isOwner && currentUserId && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleSaveToggle}
+            disabled={isSaving}
+            className={isSaved ? 'text-primary' : ''}
+            title={isSaved ? 'Remove from saved' : 'Save subject'}
+          >
+            {isSaved ? <BookmarkCheck className="h-4 w-4" /> : <Bookmark className="h-4 w-4" />}
+          </Button>
+        )}
         
         {isOwner && (
           <DropdownMenu>

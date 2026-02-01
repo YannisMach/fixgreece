@@ -23,9 +23,12 @@ import {
   FileEdit,
   GripHorizontal,
   PanelTop,
-  Minimize2
+  Minimize2,
+  Bookmark,
+  BookmarkCheck
 } from 'lucide-react'
 import { vote, getComments, createComment, updateNode, deleteNode, createReport, updateNodeStatus } from '@/lib/actions/mindmap'
+import { saveNode, removeSave } from '@/lib/actions/saves'
 import { cn } from '@/lib/utils'
 
 const statusConfig: Record<ContentStatus, { icon: typeof Globe; label: string; className: string }> = {
@@ -38,20 +41,26 @@ interface NodePanelProps {
   node: NodeType
   canEdit: boolean
   currentUserId?: string
+  isSaved?: boolean
+  saveId?: string
   onUpdate: (node: NodeType) => void
   onDelete: (nodeId: string) => void
   onAddBranch: (node: NodeType) => void
   onClose: () => void
+  onSaveChange?: (saved: boolean, saveId?: string) => void
 }
 
 export function NodePanel({ 
   node, 
   canEdit, 
   currentUserId,
+  isSaved: initialSaved = false,
+  saveId: initialSaveId,
   onUpdate, 
   onDelete, 
   onAddBranch,
-  onClose 
+  onClose,
+  onSaveChange
 }: NodePanelProps) {
   const [content, setContent] = useState(node.content)
   const [description, setDescription] = useState(node.description || '')
@@ -60,6 +69,8 @@ export function NodePanel({
   const [newComment, setNewComment] = useState('')
   const [reportReason, setReportReason] = useState('')
   const [showReport, setShowReport] = useState(false)
+  const [isSaved, setIsSaved] = useState(initialSaved)
+  const [currentSaveId, setCurrentSaveId] = useState<string | undefined>(initialSaveId)
   const [isPending, startTransition] = useTransition()
   
   // Draggable and docking state
@@ -231,6 +242,28 @@ export function NodePanel({
     })
   }
   
+  function handleSaveToggle() {
+    if (!currentUserId) return
+    
+    startTransition(async () => {
+      if (isSaved && currentSaveId) {
+        const success = await removeSave(currentSaveId)
+        if (success) {
+          setIsSaved(false)
+          setCurrentSaveId(undefined)
+          onSaveChange?.(false)
+        }
+      } else {
+        const save = await saveNode(node.id)
+        if (save) {
+          setIsSaved(true)
+          setCurrentSaveId(save.id)
+          onSaveChange?.(true, save.id)
+        }
+      }
+    })
+  }
+  
   // Panel positioning classes
   const panelClasses = cn(
     'z-50 w-80 shadow-xl transition-all duration-200',
@@ -390,15 +423,28 @@ export function NodePanel({
             </Button>
           </div>
           
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setShowReport(!showReport)}
-            disabled={!currentUserId}
-            className="text-muted-foreground"
-          >
-            <Flag className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleSaveToggle}
+              disabled={!currentUserId || isPending}
+              className={cn(isSaved && 'text-primary')}
+              title={isSaved ? 'Remove from saved' : 'Save branch'}
+            >
+              {isSaved ? <BookmarkCheck className="h-4 w-4" /> : <Bookmark className="h-4 w-4" />}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowReport(!showReport)}
+              disabled={!currentUserId}
+              className="text-muted-foreground"
+              title="Report"
+            >
+              <Flag className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
         
         {/* Report */}
