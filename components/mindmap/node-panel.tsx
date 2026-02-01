@@ -1,6 +1,8 @@
 'use client'
 
-import { useState, useEffect, useTransition } from 'react'
+import React from "react"
+
+import { useState, useEffect, useTransition, useRef } from 'react'
 import { Node as NodeType, Comment, formatDisplayName, ContentStatus } from '@/lib/types'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -18,16 +20,19 @@ import {
   Send,
   Globe,
   Lock,
-  FileEdit
+  FileEdit,
+  GripHorizontal,
+  PanelTop,
+  Minimize2
 } from 'lucide-react'
 import { vote, getComments, createComment, updateNode, deleteNode, createReport, updateNodeStatus } from '@/lib/actions/mindmap'
+import { cn } from '@/lib/utils'
 
 const statusConfig: Record<ContentStatus, { icon: typeof Globe; label: string; className: string }> = {
   draft: { icon: FileEdit, label: 'Draft', className: 'text-amber-600 border-amber-500' },
   public: { icon: Globe, label: 'Public', className: 'text-green-600 border-green-500' },
   private: { icon: Lock, label: 'Private', className: 'text-muted-foreground border-muted-foreground' },
 }
-import { cn } from '@/lib/utils'
 
 interface NodePanelProps {
   node: NodeType
@@ -57,6 +62,13 @@ export function NodePanel({
   const [showReport, setShowReport] = useState(false)
   const [isPending, startTransition] = useTransition()
   
+  // Draggable and docking state
+  const [isDocked, setIsDocked] = useState(false)
+  const [position, setPosition] = useState({ x: 0, y: 0 })
+  const [isDragging, setIsDragging] = useState(false)
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0 })
+  const panelRef = useRef<HTMLDivElement>(null)
+  
   const isRoot = !node.parent_id
   const canDelete = canEdit && !isRoot && node.user_id === currentUserId
   const isNodeOwner = node.user_id === currentUserId
@@ -66,6 +78,49 @@ export function NodePanel({
     setDescription(node.description || '')
     loadComments()
   }, [node.id])
+  
+  // Handle drag
+  useEffect(() => {
+    if (!isDragging) return
+    
+    function handleMouseMove(e: MouseEvent) {
+      const newX = e.clientX - dragStart.x
+      const newY = e.clientY - dragStart.y
+      setPosition({ x: newX, y: newY })
+    }
+    
+    function handleMouseUp() {
+      setIsDragging(false)
+    }
+    
+    document.addEventListener('mousemove', handleMouseMove)
+    document.addEventListener('mouseup', handleMouseUp)
+    
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+    }
+  }, [isDragging, dragStart])
+  
+  function handleDragStart(e: React.MouseEvent) {
+    if (isDocked) return
+    
+    const rect = panelRef.current?.getBoundingClientRect()
+    if (!rect) return
+    
+    setDragStart({
+      x: e.clientX - position.x,
+      y: e.clientY - position.y
+    })
+    setIsDragging(true)
+  }
+  
+  function toggleDock() {
+    setIsDocked(!isDocked)
+    if (!isDocked) {
+      setPosition({ x: 0, y: 0 })
+    }
+  }
   
   async function loadComments() {
     const data = await getComments(node.id)
@@ -78,20 +133,16 @@ export function NodePanel({
     startTransition(async () => {
       await vote(node.id, value)
       
-      // Update local state
       let newVoteCount = node.vote_count ?? 0
       let newUserVote = 0
       
       if (node.user_vote === value) {
-        // Removing vote
         newVoteCount -= value
         newUserVote = 0
       } else if (node.user_vote) {
-        // Changing vote
         newVoteCount = newVoteCount - node.user_vote + value
         newUserVote = value
       } else {
-        // New vote
         newVoteCount += value
         newUserVote = value
       }
@@ -180,17 +231,67 @@ export function NodePanel({
     })
   }
   
+  // Panel positioning classes
+  const panelClasses = cn(
+    'z-50 w-80 shadow-xl transition-all duration-200',
+    isDocked 
+      ? 'fixed left-1/2 top-16 -translate-x-1/2 rounded-b-xl rounded-t-none border-t-0' 
+      : 'absolute rounded-xl',
+    isDragging && 'cursor-grabbing'
+  )
+  
+  const panelStyle = isDocked 
+    ? {} 
+    : { 
+        right: position.x === 0 && position.y === 0 ? '16px' : 'auto',
+        top: position.x === 0 && position.y === 0 ? '16px' : 'auto',
+        left: position.x !== 0 || position.y !== 0 ? `${position.x}px` : 'auto',
+        transform: position.x !== 0 || position.y !== 0 ? `translateY(${position.y}px)` : 'none',
+      }
+  
   return (
-    <Card className="absolute right-4 top-4 z-20 w-80 shadow-xl">
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-base font-medium">
-          {isRoot ? 'Main Topic' : 'Branch'}
-        </CardTitle>
-        <Button variant="ghost" size="sm" onClick={onClose}>
-          <X className="h-4 w-4" />
-        </Button>
+    <Card 
+      ref={panelRef}
+      className={panelClasses}
+      style={panelStyle}
+    >
+      {/* Draggable header */}
+      <CardHeader 
+        className={cn(
+          'flex flex-row items-center justify-between space-y-0 border-b border-border pb-2',
+          !isDocked && 'cursor-grab',
+          isDragging && 'cursor-grabbing'
+        )}
+        onMouseDown={handleDragStart}
+      >
+        <div className="flex items-center gap-2">
+          {!isDocked && (
+            <GripHorizontal className="h-4 w-4 text-muted-foreground" />
+          )}
+          <CardTitle className="text-base font-medium">
+            {isRoot ? 'Main Topic' : 'Branch'}
+          </CardTitle>
+        </div>
+        <div className="flex items-center gap-1">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={toggleDock}
+            className="h-7 w-7 p-0"
+            title={isDocked ? 'Undock panel' : 'Dock to top'}
+          >
+            {isDocked ? <Minimize2 className="h-3.5 w-3.5" /> : <PanelTop className="h-3.5 w-3.5" />}
+          </Button>
+          <Button variant="ghost" size="sm" onClick={onClose} className="h-7 w-7 p-0">
+            <X className="h-4 w-4" />
+          </Button>
+        </div>
       </CardHeader>
-      <CardContent className="space-y-4">
+      
+      <CardContent className={cn(
+        'space-y-4 pt-4',
+        isDocked && 'max-h-[60vh] overflow-y-auto'
+      )}>
         {/* Content */}
         <div className="space-y-3">
           <div className="space-y-1.5">
