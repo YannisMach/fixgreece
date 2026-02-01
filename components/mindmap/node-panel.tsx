@@ -83,10 +83,10 @@ export function NodePanel({
   const panelRef = useRef<HTMLDivElement>(null)
   
   const isRoot = !node.parent_id
-  const isMindMapOwner = currentUserId && mindMapOwnerId && currentUserId === mindMapOwnerId
-  const isNodeOwner = currentUserId && node.user_id === currentUserId
-  // Can delete if: not root AND (is mindmap owner OR created this node)
-  const canDelete = !isRoot && (isMindMapOwner || isNodeOwner)
+  const isMindMapOwner = !!(currentUserId && mindMapOwnerId && currentUserId === mindMapOwnerId)
+  const isNodeOwner = !!(currentUserId && node.user_id && node.user_id === currentUserId)
+  // Can delete if: not root AND user is logged in AND (is mindmap owner OR created this node)
+  const canDelete = !isRoot && !!currentUserId && (isMindMapOwner || isNodeOwner)
   
   useEffect(() => {
     setContent(node.content)
@@ -182,18 +182,9 @@ export function NodePanel({
   }
   
   function handleDescriptionSave() {
-    if (description === (node.description || '')) return
-    
-    startTransition(async () => {
-      const formData = new FormData()
-      formData.set('nodeId', node.id)
-      formData.set('description', description)
-      
-      const result = await updateNode(formData)
-      if (result.success) {
-        onUpdate({ ...node, description })
-      }
-    })
+    // Description saving disabled until database column is added
+    // TODO: Enable this when 'description' column exists in nodes table
+    console.log('[v0] Description save skipped - column not yet in database')
   }
   
   function handleDelete() {

@@ -181,7 +181,6 @@ export async function updateNode(formData: FormData) {
   
   const nodeId = formData.get('nodeId') as string
   const content = formData.get('content') as string
-  const description = formData.get('description') as string | null
   const positionX = formData.get('positionX') ? parseFloat(formData.get('positionX') as string) : undefined
   const positionY = formData.get('positionY') ? parseFloat(formData.get('positionY') as string) : undefined
   const color = formData.get('color') as string | null
@@ -193,7 +192,8 @@ export async function updateNode(formData: FormData) {
   
   // Only update content if it's a non-empty string (content column is NOT NULL)
   if (content && content.trim()) updates.content = content.trim()
-  if (description !== null) updates.description = description || null
+  // Note: description column needs to be added to database before enabling
+  // if (description !== null) updates.description = description || null
   if (positionX !== undefined && !isNaN(positionX)) updates.position_x = positionX
   if (positionY !== undefined && !isNaN(positionY)) updates.position_y = positionY
   if (color) updates.color = color
