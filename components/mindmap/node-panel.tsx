@@ -88,6 +88,16 @@ export function NodePanel({
   // Can delete if: not root AND user is logged in AND (is mindmap owner OR created this node)
   const canDelete = !isRoot && !!currentUserId && (isMindMapOwner || isNodeOwner)
   
+  console.log('[v0] Delete check:', {
+    isRoot,
+    currentUserId,
+    mindMapOwnerId,
+    nodeUserId: node.user_id,
+    isMindMapOwner,
+    isNodeOwner,
+    canDelete
+  })
+  
   useEffect(() => {
     setContent(node.content)
     setDescription(node.description || '')

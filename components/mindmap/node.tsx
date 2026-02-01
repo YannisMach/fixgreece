@@ -50,7 +50,10 @@ export function MindMapNode({
       onSelect={onSelect}
       onDragStart={onDragStart}
       onDoubleClick={canEdit ? onDoubleClick : undefined}
-      onQuickAdd={onQuickAdd ? () => onQuickAdd('down') : undefined}
+      onQuickAdd={onQuickAdd ? () => {
+        console.log('[v0] MindMapNode onQuickAdd wrapper called')
+        onQuickAdd('down')
+      } : undefined}
       canEdit={canEdit}
       showQuickAdd={showQuickAdd}
     />

@@ -92,15 +92,22 @@ export function SharedNode({
       {/* Quick add button - single button below node */}
       {showQuickAdd && onQuickAdd && (
         <button
-          className="absolute -bottom-10 left-1/2 z-50 flex h-7 w-7 -translate-x-1/2 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-lg transition-all hover:scale-110"
+          type="button"
+          className="absolute -bottom-12 left-1/2 z-[9999] flex h-9 w-9 -translate-x-1/2 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-xl transition-all hover:scale-110 hover:bg-primary/90"
+          style={{ pointerEvents: 'auto' }}
+          onMouseDown={(e) => {
+            e.stopPropagation()
+            e.preventDefault()
+          }}
           onClick={(e) => { 
             e.stopPropagation()
             e.preventDefault()
+            console.log('[v0] Quick add button clicked, calling onQuickAdd')
             onQuickAdd() 
           }}
           title="Add branch"
         >
-          <Plus className="h-4 w-4" />
+          <Plus className="h-5 w-5" />
         </button>
       )}
       
